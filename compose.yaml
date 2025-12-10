@@ -1,0 +1,24 @@
+################################################
+##   EAC3 Converter - Convert audio to EAC3   ##
+################################################
+
+---
+services:
+  eac3_converter:
+    container_name: eac3_converter
+    build: .
+    volumes:
+      - ./test_data:/app/input:rw
+      - ./cache:/app/cache:rw
+    env_file: .env
+    restart: no
+    network_mode: none
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "main.py"]
+      interval: 1m
+      timeout: 10s
+      retries: 3
