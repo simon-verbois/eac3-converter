@@ -57,22 +57,35 @@ class FileProcessor:
         logger.debug(f"Cache miss for {filename} with key: {file_key}")
 
         temp_file = Path(file_path).parent / f".temp_{filename}"
-        new_file_name = Path(file_path).parent / filename
 
         if self.audio_processor.has_dts_or_truehd(file_path):
+            # Check disk space before starting conversion
+            if not self.audio_processor.check_disk_space(file_path):
+                logger.error(f"Skipping conversion of {filename} due to insufficient disk space")
+                return
+
             try:
                 logger.info(f"Converting audio tracks for {filename}...")
-                self.audio_processor.convert_audio_tracks(file_path, str(temp_file))
+                conversion_metrics = self.audio_processor.convert_audio_tracks(file_path, str(temp_file))
                 logger.info(f"Conversion completed for {filename}.")
+
+                # Check if temp file exists before replacement
+                if not temp_file.exists():
+                    logger.error(f"Temporary file {temp_file} does not exist after conversion")
+                    return
+
                 os.replace(temp_file, file_path)
                 logger.info(f"File {filename} replaced successfully.")
 
                 metadata = {
                     "timestamp": datetime.now().isoformat(),
                     "action": "converted",
-                    "original_codecs": "dts_or_truehd"
+                    "original_codecs": "dts_or_truehd",
+                    "conversion_time": conversion_metrics["conversion_time"],
+                    "ffmpeg_command": conversion_metrics["command"]
                 }
                 self.cache_manager.mark_processed(file_key, metadata)
+                logger.info(f"Metrics: conversion_time={conversion_metrics['conversion_time']:.2f}s")
             except Exception as e:
                 logger.error(f"Failed to convert {filename}: {e}")
                 # Clean up the temporary file if conversion fails

@@ -3,11 +3,14 @@ debug_mode = false
 
 [schedule]
 start_time = "04:00"
-run_immediately = true
-
-[paths]
-input_dir = "/app/input"
-cache_file = "/app/cache/converted-files.cache"
+run_immediately = false
 
 [system]
 timezone = "Europe/Paris"
+
+[ffmpeg]
+audio_bitrate = "640k"
+strict_mode = "-2"
+flags = "+genpts"
+timeout_seconds = 3600
+min_disk_space_ratio = 1.5

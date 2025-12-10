@@ -1,7 +1,10 @@
-import os
 import sys
 import tomli
 from typing import Dict, Any
+
+# Constants for fixed paths
+INPUT_DIR = "/app/input"
+CACHE_FILE = "/app/cache/converted-files.cache"
 
 
 class Config:
@@ -40,19 +43,59 @@ class Config:
         return self._config.get("schedule", {}).get("run_immediately", False)
 
     @property
-    def input_dir(self) -> str:
-        """Get input directory path."""
-        return self._config.get("paths", {}).get("input_dir", "/app/input")
-
-    @property
-    def cache_file(self) -> str:
-        """Get cache file path."""
-        return self._config.get("paths", {}).get("cache_file", "/app/cache/converted-files.cache")
-
-    @property
     def timezone(self) -> str:
         """Get timezone setting."""
         return self._config.get("system", {}).get("timezone", "Europe/Paris")
+
+    @property
+    def ffmpeg_audio_bitrate(self) -> str:
+        """Get ffmpeg audio bitrate setting."""
+        return self._config.get("ffmpeg", {}).get("audio_bitrate", "640k")
+
+    @property
+    def ffmpeg_strict_mode(self) -> str:
+        """Get ffmpeg strict mode setting."""
+        return self._config.get("ffmpeg", {}).get("strict_mode", "-2")
+
+    @property
+    def ffmpeg_flags(self) -> str:
+        """Get ffmpeg flags setting."""
+        return self._config.get("ffmpeg", {}).get("flags", "+genpts")
+
+    @property
+    def ffmpeg_timeout_seconds(self) -> int:
+        """Get ffmpeg timeout in seconds."""
+        return self._config.get("ffmpeg", {}).get("timeout_seconds", 3600)
+
+    @property
+    def ffmpeg_min_disk_space_ratio(self) -> float:
+        """Get minimum disk space ratio required."""
+        return self._config.get("ffmpeg", {}).get("min_disk_space_ratio", 1.5)
+
+    @property
+    def ffmpeg_threads(self) -> int:
+        """Get ffmpeg threads setting."""
+        return self._config.get("ffmpeg", {}).get("threads", 0)
+
+    @property
+    def ffmpeg_bufsize(self) -> str:
+        """Get ffmpeg buffer size setting."""
+        return self._config.get("ffmpeg", {}).get("bufsize", "128k")
+
+    @property
+    def ffmpeg_performance_flags(self) -> str:
+        """Get ffmpeg performance flags setting."""
+        return self._config.get("ffmpeg", {}).get("performance_flags", "+discardcorrupt+genpts+igndts+ignidx")
+
+    @property
+    def ffmpeg_avoid_negative_ts(self) -> str:
+        """Get ffmpeg avoid negative timestamps setting."""
+        return self._config.get("ffmpeg", {}).get("avoid_negative_ts", "make_zero")
+
+    @property
+    def ffmpeg_max_muxing_queue_size(self) -> int:
+        """Get ffmpeg max muxing queue size setting."""
+        return self._config.get("ffmpeg", {}).get("max_muxing_queue_size", 1024)
 
     def get_parsed_start_time(self) -> tuple[int, int]:
         """Parse start time into hour and minute."""

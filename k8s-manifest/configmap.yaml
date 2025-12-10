@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: eac3-converter-config
+  namespace: eac3-converter
+data:
+  config.toml: |
+    [app]
+    debug_mode = false
+
+    [schedule]
+    start_time = "21:48"
+    run_immediately = true
+
+    [system]
+    timezone = "Europe/Paris"
+
+    [ffmpeg]
+    audio_bitrate = "640k"
+    strict_mode = "-2"
+    flags = "+genpts"
+    timeout_seconds = 3600
+    min_disk_space_ratio = 1.5
+    threads = 0
+    bufsize = "128k"
+    performance_flags = "+discardcorrupt+genpts+igndts+ignidx"
+    avoid_negative_ts = "make_zero"
+    max_muxing_queue_size = 1024

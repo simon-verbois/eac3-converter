@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eac3-converter
+  namespace: eac3-converter
+  labels:
+    app: eac3-converter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: eac3-converter
+  template:
+    metadata:
+      labels:
+        app: eac3-converter
+    spec:
+      containers:
+      - name: eac3-converter
+        image: your-registry/eac3-converter:latest  # Replace with your image
+        imagePullPolicy: Always
+        command: ["python", "-u", "main.py"]
+        resources:
+          limits:
+            cpu: "500m"
+          requests:
+            cpu: "100m"
+            memory: "256Mi"
+        livenessProbe:
+          exec:
+            command:
+            - pgrep
+            - -f
+            - main.py
+          initialDelaySeconds: 30
+          periodSeconds: 60
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command:
+            - pgrep
+            - -f
+            - main.py
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+        volumeMounts:
+        - name: config-volume
+          mountPath: /app/config
+          readOnly: true
+        - name: cache-volume
+          mountPath: /app/cache
+        - name: input-volume
+          mountPath: /app/input
+      volumes:
+      - name: config-volume
+        configMap:
+          name: eac3-converter-config
+      - name: cache-volume
+        persistentVolumeClaim:
+          claimName: eac3-converter-cache
+      - name: input-volume
+        hostPath:
+          path: /path/to/your/input/data  # Replace with your host path
+          type: Directory
