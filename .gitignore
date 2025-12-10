@@ -1,2 +1,8 @@
+# Testing data
 test_data*/
-.env
+
+# Config
+config/config.toml
+
+# Cache
+cache/

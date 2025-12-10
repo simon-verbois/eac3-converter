@@ -1,0 +1,13 @@
+[app]
+debug_mode = false
+
+[schedule]
+start_time = "04:00"
+run_immediately = true
+
+[paths]
+input_dir = "/app/input"
+cache_file = "/app/cache/converted-files.cache"
+
+[system]
+timezone = "Europe/Paris"

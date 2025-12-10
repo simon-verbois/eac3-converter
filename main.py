@@ -5,14 +5,31 @@ import subprocess
 import logging
 import json
 import sys
+import tomli
 from pathlib import Path
 from datetime import datetime
 
-INPUT_DIR = "/app/input"
-CACHE_FILE = "/app/cache/converted-files.cache"
-START_HOUR = int(os.getenv("START_HOUR", 11))  # Default to 11 if not set
-RUN_IMMEDIATELY = os.getenv("RUN_IMMEDIATELY", "false").lower() == "true"  # Default to false
-DEBUG_MODE = os.getenv("DEBUG_MODE", "false").lower() == "true"  # Default to false
+# Load configuration from TOML file
+config_path = "/app/config/config.toml"
+try:
+    with open(config_path, "rb") as f:
+        config = tomli.load(f)
+except FileNotFoundError:
+    print(f"Configuration file not found: {config_path}")
+    sys.exit(1)
+except Exception as e:
+    print(f"Error loading configuration: {e}")
+    sys.exit(1)
+
+# Parse configuration
+INPUT_DIR = config["paths"]["input_dir"]
+CACHE_FILE = config["paths"]["cache_file"]
+DEBUG_MODE = config["app"]["debug_mode"]
+
+# Parse start time (HH:MM format)
+start_time_str = config["schedule"]["start_time"]
+START_HOUR, START_MINUTE = map(int, start_time_str.split(":"))
+RUN_IMMEDIATELY = config["schedule"]["run_immediately"]
 
 logging.basicConfig(
     level=logging.DEBUG if DEBUG_MODE else logging.INFO,
@@ -164,7 +181,7 @@ def process_file(file_path, processed_cache):
 def main():
     logging.info("Starting watch service...")
     if DEBUG_MODE:
-        logging.debug(f"Configuration: INPUT_DIR={INPUT_DIR}, START_HOUR={START_HOUR}, RUN_IMMEDIATELY={RUN_IMMEDIATELY}")
+        logging.debug(f"Configuration: INPUT_DIR={INPUT_DIR}, START_TIME={START_HOUR}:{START_MINUTE:02d}, RUN_IMMEDIATELY={RUN_IMMEDIATELY}")
 
     last_run_date = None
     processed_cache = load_cache()
@@ -179,8 +196,8 @@ def main():
         if RUN_IMMEDIATELY:
             logging.info("RUN_IMMEDIATELY is enabled. Processing files regardless of schedule.")
             should_run = True
-        elif now.hour >= START_HOUR and (last_run_date is None or last_run_date < now.date()):
-            logging.info(f"Current time {now.hour}:{now.minute} is after start hour {START_HOUR}. Starting daily file processing...")
+        elif (now.hour > START_HOUR or (now.hour == START_HOUR and now.minute >= START_MINUTE)) and (last_run_date is None or last_run_date < now.date()):
+            logging.info(f"Current time {now.hour}:{now.minute} is after start time {START_HOUR}:{START_MINUTE:02d}. Starting daily file processing...")
             last_run_date = now.date()
             should_run = True
         else:

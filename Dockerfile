@@ -9,6 +9,8 @@ RUN apt-get update && \
     dpkg-reconfigure -f noninteractive tzdata && \
     rm -rf /var/lib/apt/lists/*
 
+RUN pip install --no-cache-dir tomli
+
 WORKDIR /app
 
 COPY main.py .

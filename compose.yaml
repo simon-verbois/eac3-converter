@@ -10,7 +10,7 @@ services:
     volumes:
       - ./test_data:/app/input:rw
       - ./cache:/app/cache:rw
-    env_file: .env
+      - ./config:/app/config:ro
     restart: no
     network_mode: none
     deploy:
