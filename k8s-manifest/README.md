@@ -1,73 +1,73 @@
 # EAC3 Converter - Kubernetes Deployment
 
-Ce dossier contient les manifests Kubernetes pour déployer l'application EAC3 Converter.
+This folder contains the Kubernetes manifests to deploy the EAC3 Converter application.
 
-## Prérequis
+## Prerequisites
 
-1. **Cluster Kubernetes** avec accès admin
-2. **Registry Docker** (Docker Hub, ECR, GCR, etc.)
-3. **Image buildée et poussée** :
+1. **Kubernetes cluster** with admin access
+2. **Docker registry** (Docker Hub, ECR, GCR, etc.)
+3. **Built and pushed image**:
    ```bash
    docker build -t your-registry/eac3-converter:latest .
    docker push your-registry/eac3-converter:latest
    ```
 
-## Configuration requise
+## Required Configuration
 
-### 1. Modifier l'image dans `deployment.yaml`
-Remplacez `your-registry/eac3-converter:latest` par votre image.
+### 1. Update the image in `deployment.yaml`
+Replace `your-registry/eac3-converter:latest` with your image.
 
-### 2. Modifier le chemin hostPath dans `deployment.yaml`
-Remplacez `/path/to/your/input/data` par le chemin réel vers vos données d'entrée sur le noeud K8s.
+### 2. Update the hostPath in `deployment.yaml`
+Replace `/path/to/your/input/data` with the actual path to your input data on the K8s node.
 
-### 3. Ajuster la StorageClass dans `pvc-cache.yaml`
-Modifiez `storageClassName: standard` selon votre cluster.
+### 3. Adjust StorageClass in `pvc-cache.yaml`
+Modify `storageClassName: standard` according to your cluster.
 
-## Déploiement
+## Deployment
 
 ```bash
-# Appliquer tous les manifests
+# Apply all manifests
 kubectl apply -f k8s-manifest/
 
-# Ou appliquer un par un
+# Or apply one by one
 kubectl apply -f namespace.yaml
 kubectl apply -f configmap.yaml
 kubectl apply -f pvc-cache.yaml
 kubectl apply -f deployment.yaml
 ```
 
-## Vérification
+## Verification
 
 ```bash
-# Vérifier le déploiement
+# Check deployment
 kubectl get pods -n eac3-converter
 kubectl logs -f deployment/eac3-converter -n eac3-converter
 
-# Vérifier les volumes
+# Check volumes
 kubectl get pvc -n eac3-converter
 ```
 
 ## Configuration
 
-Le ConfigMap contient la configuration complète. Pour modifier :
-1. Éditez `configmap.yaml`
-2. Redéployez : `kubectl apply -f configmap.yaml`
-3. Redémarrez le pod : `kubectl rollout restart deployment/eac3-converter -n eac3-converter`
+The ConfigMap contains the complete configuration. To modify:
+1. Edit `configmap.yaml`
+2. Redeploy: `kubectl apply -f configmap.yaml`
+3. Restart the pod: `kubectl rollout restart deployment/eac3-converter -n eac3-converter`
 
-## Correspondance avec Docker Compose
+## Docker Compose to Kubernetes Mapping
 
 | Docker Compose | Kubernetes |
 |---|---|
-| `build: .` | Image pré-buildée |
+| `build: .` | Pre-built image |
 | `./test_data:/app/input` | hostPath volume |
 | `./cache:/app/cache` | PersistentVolumeClaim |
 | `./config:/app/config` | ConfigMap |
 | `cpus: '0.5'` | `cpu: "500m"` |
 | `pgrep -f main.py` | livenessProbe + readinessProbe |
-| `network_mode: none` | Isolation par défaut |
+| `network_mode: none` | Default isolation |
 
-## Dépannage
+## Troubleshooting
 
-- **Pod en CrashLoopBackOff** : Vérifiez les logs et les volumes
-- **ImagePullBackOff** : Vérifiez l'accès au registry
-- **Volume non monté** : Vérifiez les chemins hostPath et permissions
+- **Pod in CrashLoopBackOff**: Check logs and volumes
+- **ImagePullBackOff**: Check registry access
+- **Volume not mounted**: Check hostPath paths and permissions
