@@ -1,8 +1,14 @@
 # Testing data
 test_data*/
+test_data_copy*/
+reset-test-data.sh
 
 # Config
 config/config.toml
 
 # Cache
 cache/
+*.cache
+
+# Temporary files
+.temp_*

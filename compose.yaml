@@ -11,7 +11,7 @@ services:
       - ./test_data:/app/input:rw
       - ./cache:/app/cache:rw
       - ./config:/app/config:ro
-    restart: no
+    restart: "no"
     network_mode: none
     deploy:
       resources:
