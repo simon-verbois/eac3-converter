@@ -8,8 +8,8 @@ services:
     container_name: eac3_converter
     image: simonverbois/eac3-converter:latest
     volumes:
-      - ./test_data:/app/input:rw
-      - ./cache:/app/cache:rw
+      - ./path/to/mkv:/app/input:rw
+      - eac3_cache:/app/cache:rw
       - ./config:/app/config:ro
     restart: always
     network_mode: none
@@ -22,3 +22,6 @@ services:
       interval: 1m
       timeout: 10s
       retries: 3
+
+volumes:
+  eac3_cache:
