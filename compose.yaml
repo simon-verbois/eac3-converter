@@ -16,7 +16,11 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
+          cpus: '4.0'
+          memory: '2G'
+        reservations:
+          cpus: '1.0'
+          memory: '512M'
     healthcheck:
       test: ["CMD", "pgrep", "-f", "main.py"]
       interval: 1m

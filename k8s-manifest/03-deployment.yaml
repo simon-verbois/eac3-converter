@@ -22,10 +22,11 @@ spec:
         command: ["python", "-u", "main.py"]
         resources:
           limits:
-            cpu: "500m"
+            cpu: "4"
+            memory: "2G"
           requests:
-            cpu: "100m"
-            memory: "256Mi"
+            cpu: "1"
+            memory: "512M"
         livenessProbe:
           exec:
             command:
