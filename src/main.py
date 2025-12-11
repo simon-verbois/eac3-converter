@@ -5,13 +5,13 @@ import signal
 import sys
 import time
 
-# Import from src package
-from src.cache_manager import CacheManager
-from src.config import config, INPUT_DIR, CACHE_FILE
-from src.logging_config import setup_logging
-from src.audio_processor import AudioProcessor
-from src.file_processor import FileProcessor
-from src.scheduler import Scheduler
+# Import from current package
+from .cache_manager import CacheManager
+from .config import config, INPUT_DIR, CACHE_FILE
+from .logging_config import setup_logging
+from .audio_processor import AudioProcessor
+from .file_processor import FileProcessor
+from .scheduler import Scheduler
 
 logger = logging.getLogger("eac3_converter")
 

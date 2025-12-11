@@ -14,6 +14,24 @@ A robust audio processing application that automatically converts DTS and TrueHD
 
 ## Quick Start
 
+### Docker + Compose
+
+```bash
+# Build image
+docker build -t eac3-converter .
+
+# Run with volumes
+docker run -v ./path/to/mkv/root/dir:/app/input:rw \
+           -v ./cache:/app/cache:rw \ # You can use a docker volume for this
+           -v ./config:/app/config:ro \
+           --cpus=0.5 \
+           eac3-converter
+```
+
+### Kubernetes 
+
+See [k8s-manifest/README.md](k8s-manifest/README.md) for complete Kubernetes deployment instructions.
+
 ### Docker Compose (Development)
 
 ```bash
@@ -21,30 +39,12 @@ A robust audio processing application that automatically converts DTS and TrueHD
 git clone <repository-url>
 cd EAC3_Converter
 
-# Place your MKV files in test_data/
+# Place your MKV files in test_data/ folder
 cp your-files/*.mkv test_data/
 
 # Build and run
 docker compose build && docker compose up
 ```
-
-### Docker (Standalone)
-
-```bash
-# Build image
-docker build -t eac3-converter .
-
-# Run with volumes
-docker run -v ./test_data:/app/input:rw \
-           -v ./cache:/app/cache:rw \
-           -v ./config:/app/config:ro \
-           --cpus=0.5 \
-           eac3-converter
-```
-
-### Kubernetes (Production)
-
-See [k8s-manifest/README.md](k8s-manifest/README.md) for complete Kubernetes deployment instructions.
 
 ## Configuration
 
