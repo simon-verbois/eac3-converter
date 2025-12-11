@@ -59,9 +59,8 @@ docker compose -f compose-testing.yaml build && docker compose -f compose-testin
 
 See LICENSE file.
 
-## Contributing
+## Disclaimer
 
-1. Fork the repository
-2. Create a feature branch
-3. Make changes and test
-4. Submit a pull request
+This is a personal automation script I use on my home server to convert DTS/TrueHD audio tracks in MKV files. I'm sharing it with the community as-is, without any warranty or guarantee of maintenance.
+
+This project was developed with the assistance of a self-hosted Mistral AI model.
