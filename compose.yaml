@@ -6,7 +6,7 @@
 services:
   eac3_converter:
     container_name: eac3_converter
-    image: simonverbois/eac3-converter
+    image: simonverbois/eac3-converter:latest
     volumes:
       - ./test_data:/app/input:rw
       - ./cache:/app/cache:rw

@@ -1,0 +1,10 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: eac3-converter-cache
+  namespace: eac3-converter
+spec:
+  storageClassName: hostpath-sc # Adjust according to your cluster
+  accessModes: [ReadWriteOnce]
+  resources: { requests: { storage: 1Gi } }

@@ -1,3 +1,4 @@
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -17,8 +18,7 @@ spec:
     spec:
       containers:
       - name: eac3-converter
-        image: your-registry/eac3-converter:latest  # Replace with your image
-        imagePullPolicy: Always
+        image: simonverbois/eac3-converter:latest
         command: ["python", "-u", "main.py"]
         resources:
           limits:
@@ -53,6 +53,7 @@ spec:
           mountPath: /app/cache
         - name: input-volume
           mountPath: /app/input
+
       volumes:
       - name: config-volume
         configMap:
