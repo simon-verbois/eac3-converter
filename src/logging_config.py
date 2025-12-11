@@ -7,7 +7,7 @@ from .config import config
 def setup_logging():
     """Set up logging configuration based on debug mode."""
 
-    log_level = logging.DEBUG if config.debug_mode else logging.INFO
+    log_level = logging.DEBUG if config.app.debug_mode else logging.INFO
 
     logging_config = {
         "version": 1,
@@ -44,5 +44,5 @@ def setup_logging():
     # Get logger for this module
     logger = logging.getLogger("eac3_converter")
     logger.info("Logging configured successfully")
-    logger.debug(f"Debug mode: {config.debug_mode}")
+    logger.debug(f"Debug mode: {config.app.debug_mode}")
     logger.debug(f"Log level: {logging.getLevelName(log_level)}")

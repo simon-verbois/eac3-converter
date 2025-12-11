@@ -43,7 +43,7 @@ cd EAC3_Converter
 cp your-files/*.mkv test_data/
 
 # Build and run
-docker compose build && docker compose up
+docker compose -f compose-testing.yaml build && docker compose -f compose-testing.yaml up
 ```
 
 ## Configuration

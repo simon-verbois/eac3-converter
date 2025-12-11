@@ -19,21 +19,23 @@ logger = logging.getLogger("eac3_converter")
 cache_manager = None
 
 def cleanup_temp_files(input_dir: str) -> int:
-    """Clean up temporary .temp_* files from previous runs."""
-    temp_pattern = os.path.join(input_dir, ".temp_*")
-    temp_files = glob.glob(temp_pattern)
-
+    """Clean up temporary .temp_* files from previous runs recursively."""
     cleaned_count = 0
-    for temp_file in temp_files:
-        try:
-            os.remove(temp_file)
-            logger.info(f"Cleaned up temporary file: {temp_file}")
-            cleaned_count += 1
-        except Exception as e:
-            logger.warning(f"Failed to remove temporary file {temp_file}: {e}")
+
+    # Walk through all directories recursively
+    for root, dirs, files in os.walk(input_dir):
+        for file in files:
+            if file.startswith(".temp_"):
+                temp_file_path = os.path.join(root, file)
+                try:
+                    os.remove(temp_file_path)
+                    logger.info(f"Cleaned up temporary file: {temp_file_path}")
+                    cleaned_count += 1
+                except Exception as e:
+                    logger.warning(f"Failed to remove temporary file {temp_file_path}: {e}")
 
     if cleaned_count > 0:
-        logger.info(f"Cleaned up {cleaned_count} temporary files")
+        logger.info(f"Cleaned up {cleaned_count} temporary files from previous runs")
 
     return cleaned_count
 
@@ -50,7 +52,7 @@ def signal_handler(signum, frame):
 
 def setup_timezone():
     """Set system timezone from configuration."""
-    timezone = config.timezone
+    timezone = config.system.timezone
     timezone_path = f"/usr/share/zoneinfo/{timezone}"
     if os.path.exists("/etc/localtime") or os.path.islink("/etc/localtime"):
         os.remove("/etc/localtime")
@@ -80,7 +82,7 @@ def main():
     cache_manager = CacheManager(CACHE_FILE)
     cache_manager.load_cache()
 
-    audio_processor = AudioProcessor(config.debug_mode)
+    audio_processor = AudioProcessor(config.app.debug_mode)
     file_processor = FileProcessor(cache_manager, audio_processor)
     scheduler = Scheduler(file_processor)
 

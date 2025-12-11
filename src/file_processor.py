@@ -6,6 +6,7 @@ from typing import Dict, Any, Optional
 
 from .audio_processor import AudioProcessor
 from .cache_manager import CacheManager
+from .exceptions import ConversionError, ConversionTimeoutError, DiskSpaceError, FileProcessingError
 
 logger = logging.getLogger("eac3_converter")
 
@@ -59,20 +60,17 @@ class FileProcessor:
         temp_file = Path(file_path).parent / f".temp_{filename}"
 
         if self.audio_processor.has_dts_or_truehd(file_path):
-            # Check disk space before starting conversion
-            if not self.audio_processor.check_disk_space(file_path):
-                logger.error(f"Skipping conversion of {filename} due to insufficient disk space")
-                return
-
             try:
+                # Check disk space before starting conversion - now raises DiskSpaceError
+                self.audio_processor.check_disk_space(file_path)
+
                 logger.info(f"Converting audio tracks for {filename}...")
                 conversion_metrics = self.audio_processor.convert_audio_tracks(file_path, str(temp_file))
                 logger.info(f"Conversion completed for {filename}.")
 
                 # Check if temp file exists before replacement
                 if not temp_file.exists():
-                    logger.error(f"Temporary file {temp_file} does not exist after conversion")
-                    return
+                    raise FileProcessingError(f"Temporary file {temp_file} does not exist after conversion")
 
                 os.replace(temp_file, file_path)
                 logger.info(f"File {filename} replaced successfully.")
@@ -86,8 +84,41 @@ class FileProcessor:
                 }
                 self.cache_manager.mark_processed(file_key, metadata)
                 logger.info(f"Metrics: conversion_time={conversion_metrics['conversion_time']:.2f}s")
+
+            except DiskSpaceError as e:
+                logger.error(f"Skipping conversion of {filename}: {e}")
+                metadata = {
+                    "timestamp": datetime.now().isoformat(),
+                    "action": "skipped",
+                    "reason": "insufficient_disk_space",
+                    "error": str(e)
+                }
+                self.cache_manager.mark_processed(file_key, metadata)
+                return
+
+            except (ConversionError, ConversionTimeoutError) as e:
+                logger.error(f"Conversion failed for {filename}: {e}")
+                metadata = {
+                    "timestamp": datetime.now().isoformat(),
+                    "action": "failed",
+                    "error_type": type(e).__name__,
+                    "error": str(e)
+                }
+                self.cache_manager.mark_processed(file_key, metadata)
+                # Clean up the temporary file if conversion fails
+                if temp_file.exists():
+                    temp_file.unlink()
+                return
+
             except Exception as e:
-                logger.error(f"Failed to convert {filename}: {e}")
+                logger.error(f"Unexpected error processing {filename}: {e}")
+                metadata = {
+                    "timestamp": datetime.now().isoformat(),
+                    "action": "failed",
+                    "error_type": "unexpected_error",
+                    "error": str(e)
+                }
+                self.cache_manager.mark_processed(file_key, metadata)
                 # Clean up the temporary file if conversion fails
                 if temp_file.exists():
                     temp_file.unlink()
@@ -102,11 +133,11 @@ class FileProcessor:
             logger.info(f"No DTS or TrueHD tracks found in {filename}, skipping.")
 
     def find_mkv_files(self, input_dir: str) -> list[str]:
-        """Find all MKV files in the input directory recursively."""
+        """Find all MKV files in the input directory recursively, excluding temporary files."""
         mkv_files = []
         for root, _, files in os.walk(input_dir):
             for file in files:
-                if file.endswith(".mkv"):
+                if file.endswith(".mkv") and not file.startswith(".temp_"):
                     mkv_files.append(os.path.join(root, file))
         logger.debug(f"Found {len(mkv_files)} MKV files in {input_dir}")
         return mkv_files

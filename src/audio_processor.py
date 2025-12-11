@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import List, Dict, Any
 
 from .config import config
+from .exceptions import ConversionError, ConversionTimeoutError, DiskSpaceError
 
 logger = logging.getLogger("eac3_converter")
 
@@ -49,7 +50,7 @@ class AudioProcessor:
         """Check if there's enough disk space for conversion (1.5x file size)."""
         try:
             file_size = os.path.getsize(file_path)
-            required_space = int(file_size * config.ffmpeg_min_disk_space_ratio)
+            required_space = int(file_size * config.ffmpeg.min_disk_space_ratio)
 
             # Get disk usage for the directory containing the file
             dir_path = os.path.dirname(os.path.abspath(file_path))
@@ -60,11 +61,14 @@ class AudioProcessor:
                         f"Available space: {available_space}")
 
             if available_space < required_space:
-                logger.error(f"Insufficient disk space for {file_path}. "
+                error_msg = (f"Insufficient disk space for {file_path}. "
                            f"Required: {required_space}, Available: {available_space}")
-                return False
+                logger.error(error_msg)
+                raise DiskSpaceError(error_msg)
 
             return True
+        except DiskSpaceError:
+            raise  # Re-raise our custom exception
         except Exception as e:
             logger.error(f"Error checking disk space for {file_path}: {e}")
             return False
@@ -76,12 +80,12 @@ class AudioProcessor:
         command = [
             "ffmpeg", "-i", input_file, "-hide_banner",
             "-loglevel", "error" if not self.debug_mode else "info",
-            "-threads", str(config.ffmpeg_threads),
-            "-fflags", config.ffmpeg_performance_flags,
-            "-avoid_negative_ts", config.ffmpeg_avoid_negative_ts,
-            "-max_muxing_queue_size", str(config.ffmpeg_max_muxing_queue_size),
-            "-b:a", config.ffmpeg_audio_bitrate, "-bufsize", config.ffmpeg_bufsize,
-            "-strict", config.ffmpeg_strict_mode,
+            "-threads", str(config.ffmpeg.threads),
+            "-fflags", config.ffmpeg.performance_flags,
+            "-avoid_negative_ts", config.ffmpeg.avoid_negative_ts,
+            "-max_muxing_queue_size", str(config.ffmpeg.max_muxing_queue_size),
+            "-b:a", config.ffmpeg.audio_bitrate, "-bufsize", config.ffmpeg.bufsize,
+            "-strict", config.ffmpeg.strict_mode,
             "-map", "0", "-c:v", "copy", "-c:a", "eac3", "-c:s", "copy",
             temp_file, "-y"
         ]
@@ -89,7 +93,18 @@ class AudioProcessor:
         logger.debug(f"Running optimized ffmpeg command: {' '.join(command)}")
         logger.info("Starting ffmpeg conversion...")
 
-        subprocess.run(command, check=True, timeout=config.ffmpeg_timeout_seconds)
+        try:
+            result = subprocess.run(command, check=True, timeout=config.ffmpeg.timeout_seconds,
+                                  capture_output=True, text=True)
+        except subprocess.TimeoutExpired:
+            logger.error(f"Conversion timeout for {input_file} after {config.ffmpeg.timeout_seconds}s")
+            raise ConversionTimeoutError(f"Timeout after {config.ffmpeg.timeout_seconds}s for {input_file}")
+        except subprocess.CalledProcessError as e:
+            logger.error(f"ffmpeg failed with return code {e.returncode}: {e.stderr}")
+            raise ConversionError(f"ffmpeg error (code {e.returncode}): {e.stderr.strip()}")
+        except Exception as e:
+            logger.error(f"Unexpected error during conversion: {e}")
+            raise ConversionError(f"Unexpected conversion error: {e}")
 
         conversion_time = time.time() - start_time
         logger.info(f"Conversion completed in {conversion_time:.2f}s")

@@ -15,7 +15,7 @@ class Scheduler:
     def __init__(self, file_processor: FileProcessor):
         self.file_processor = file_processor
         self.start_hour, self.start_minute = config.get_parsed_start_time()
-        self.run_immediately = config.run_immediately
+        self.run_immediately = config.schedule.run_immediately
         self.input_dir = INPUT_DIR
         self.last_run_date: date | None = None
 
