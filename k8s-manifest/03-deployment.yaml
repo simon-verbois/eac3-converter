@@ -19,7 +19,6 @@ spec:
       containers:
       - name: eac3-converter
         image: simonverbois/eac3-converter:latest
-        command: ["python", "-u", "main.py"]
         resources:
           limits:
             cpu: "4"
@@ -37,23 +36,16 @@ spec:
           periodSeconds: 60
           timeoutSeconds: 10
           failureThreshold: 3
-        readinessProbe:
-          exec:
-            command:
-            - pgrep
-            - -f
-            - main.py
-          initialDelaySeconds: 5
-          periodSeconds: 10
-          timeoutSeconds: 5
         volumeMounts:
         - name: config-volume
           mountPath: /app/config
           readOnly: true
         - name: cache-volume
           mountPath: /app/cache
-        - name: input-volume
-          mountPath: /app/input
+        - name: folder1
+          mountPath: /app/input/folder1
+        - name: folder2
+          mountPath: /app/input/folder2
 
       volumes:
       - name: config-volume
@@ -62,7 +54,11 @@ spec:
       - name: cache-volume
         persistentVolumeClaim:
           claimName: eac3-converter-cache
-      - name: input-volume
+      - name: folder1
         hostPath:
-          path: /path/to/your/input/data  # Replace with your host path
+          path: /path/to/folder1  # Replace with your host path
+          type: Directory
+      - name: folder2
+        hostPath:
+          path: /path/to/folder2  # Replace with your host path
           type: Directory

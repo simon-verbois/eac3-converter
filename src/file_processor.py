@@ -130,7 +130,7 @@ class FileProcessor:
                 "reason": "no_dts_or_truehd"
             }
             self.cache_manager.mark_processed(file_key, metadata)
-            logger.info(f"No DTS or TrueHD tracks found in {filename}, skipping.")
+            logger.debug(f"No DTS or TrueHD tracks found in {filename}, skipping.")
 
     def find_mkv_files(self, input_dir: str) -> list[str]:
         """Find all MKV files in the input directory recursively, excluding temporary files."""

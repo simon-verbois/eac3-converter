@@ -8,10 +8,11 @@ services:
     container_name: eac3_converter
     image: simonverbois/eac3-converter:latest
     volumes:
-      - ./path/to/mkv:/app/input:rw
+      - ./path/to/folder1:/app/input/folder1:rw
+      - ./path/to/folder2:/app/input/folder2:rw
       - eac3_cache:/app/cache:rw
       - ./config:/app/config:ro
-    restart: always
+    restart: no # Change this settings if you run with the scheduler
     network_mode: none
     deploy:
       resources:
