@@ -11,6 +11,8 @@ ENV_VARS = [
     "FFMPEG_TIMEOUT_SECONDS", "FFMPEG_MIN_DISK_SPACE_RATIO", "FFMPEG_THREADS",
     "FFMPEG_BUFSIZE", "FFMPEG_PERFORMANCE_FLAGS", "FFMPEG_AVOID_NEGATIVE_TS",
     "FFMPEG_MAX_MUXING_QUEUE_SIZE",
+    "PROCESS_STANDALONE_AUDIO", "STANDALONE_AUDIO_EXTENSIONS",
+    "STANDALONE_AUDIO_KEEP_ORIGINAL", "STANDALONE_AUDIO_OUTPUT_EXTENSION",
 ]
 
 
@@ -94,6 +96,35 @@ def test_dialnorm_invalid(monkeypatch):
     monkeypatch.setenv("FFMPEG_DIALNORM", "abc")
     with pytest.raises(ConfigError):
         load_config()
+
+
+def test_standalone_audio_defaults():
+    cfg = load_config()
+    assert cfg.standalone_audio.enabled is False
+    assert cfg.standalone_audio.extensions == ("dts", "thd", "truehd", "dtshd")
+    assert cfg.standalone_audio.keep_original is False
+    assert cfg.standalone_audio.output_extension == "ec3"
+
+
+def test_standalone_audio_enabled(monkeypatch):
+    monkeypatch.setenv("PROCESS_STANDALONE_AUDIO", "true")
+    assert load_config().standalone_audio.enabled is True
+
+
+def test_standalone_audio_extensions_parsed(monkeypatch):
+    monkeypatch.setenv("STANDALONE_AUDIO_EXTENSIONS", "DTS, .thd ,  TRUEHD")
+    cfg = load_config()
+    assert cfg.standalone_audio.extensions == ("dts", "thd", "truehd")
+
+
+def test_standalone_audio_keep_original(monkeypatch):
+    monkeypatch.setenv("STANDALONE_AUDIO_KEEP_ORIGINAL", "1")
+    assert load_config().standalone_audio.keep_original is True
+
+
+def test_standalone_audio_output_extension_strips_dot(monkeypatch):
+    monkeypatch.setenv("STANDALONE_AUDIO_OUTPUT_EXTENSION", ".eac3")
+    assert load_config().standalone_audio.output_extension == "eac3"
 
 
 def test_bitrate_overrides(monkeypatch):

@@ -6,6 +6,7 @@ from typing import Dict, Any, Optional
 
 from .audio_processor import AudioProcessor
 from .cache_manager import CacheManager
+from .config import config
 from .exceptions import ConversionError, ConversionTimeoutError, DiskSpaceError, FileProcessingError
 
 logger = logging.getLogger("eac3_converter")
@@ -141,3 +142,137 @@ class FileProcessor:
                     mkv_files.append(os.path.join(root, file))
         logger.debug(f"Found {len(mkv_files)} MKV files in {input_dir}")
         return mkv_files
+
+    def find_standalone_audio_files(self, input_dir: str) -> list[str]:
+        """Find standalone audio files (e.g. .dts) in the input directory recursively."""
+        extensions = tuple(f".{ext.lower()}" for ext in config.standalone_audio.extensions)
+        if not extensions:
+            return []
+        audio_files = []
+        for root, _, files in os.walk(input_dir):
+            for file in files:
+                if file.startswith(".temp_"):
+                    continue
+                if file.lower().endswith(extensions):
+                    audio_files.append(os.path.join(root, file))
+        logger.debug(f"Found {len(audio_files)} standalone audio files in {input_dir}")
+        return audio_files
+
+    def process_standalone_audio_file(self, file_path: str) -> None:
+        """Convert a standalone audio file (e.g. .dts) to a sibling EAC3 file."""
+        filename = Path(file_path).name
+        file_metadata = self.get_file_metadata(file_path)
+
+        if file_metadata is None:
+            return
+
+        file_key = self.generate_file_key(file_path, file_metadata)
+        logger.debug(f"Processing standalone audio file: {filename} with key: {file_key}")
+
+        if self.cache_manager.is_processed(file_key):
+            logger.debug(f"Cache hit for {filename} with key: {file_key}")
+            logger.info(f"Skipping {filename} (already processed according to cache)")
+            return
+
+        streams = self.audio_processor.get_audio_streams_info(file_path)
+        codec = streams[0].get("codec_name", "").lower() if streams else ""
+        if codec in ("eac3", "ac3"):
+            logger.info(f"Skipping {filename}: already in {codec.upper()} (no conversion needed).")
+            self.cache_manager.mark_processed(file_key, {
+                "timestamp": datetime.now().isoformat(),
+                "action": "skipped",
+                "reason": "already_eac3_compatible",
+                "codec": codec,
+            })
+            return
+        if codec and codec not in ("dts", "truehd"):
+            logger.info(f"Skipping {filename}: unsupported codec {codec!r} for standalone conversion.")
+            self.cache_manager.mark_processed(file_key, {
+                "timestamp": datetime.now().isoformat(),
+                "action": "skipped",
+                "reason": "unsupported_codec",
+                "codec": codec,
+            })
+            return
+        if not codec:
+            logger.warning(f"Could not determine codec for {filename}; skipping.")
+            self.cache_manager.mark_processed(file_key, {
+                "timestamp": datetime.now().isoformat(),
+                "action": "skipped",
+                "reason": "codec_unknown",
+            })
+            return
+
+        source = Path(file_path)
+        out_ext = config.standalone_audio.output_extension or "ec3"
+        output_file = source.with_suffix(f".{out_ext}")
+        temp_file = source.parent / f".temp_{source.stem}.{out_ext}"
+
+        if output_file.exists() and not config.standalone_audio.keep_original:
+            # An EAC3 sibling already exists; mark as processed to avoid loops.
+            logger.info(f"Output {output_file.name} already exists for {filename}, marking as processed.")
+            self.cache_manager.mark_processed(file_key, {
+                "timestamp": datetime.now().isoformat(),
+                "action": "skipped",
+                "reason": "output_already_exists",
+            })
+            return
+
+        try:
+            self.audio_processor.check_disk_space(file_path)
+
+            logger.info(f"Converting standalone audio {filename}...")
+            conversion_metrics = self.audio_processor.convert_standalone_audio(file_path, str(temp_file))
+
+            if not temp_file.exists():
+                raise FileProcessingError(f"Temporary file {temp_file} does not exist after conversion")
+
+            os.replace(temp_file, output_file)
+            logger.info(f"Standalone audio {filename} -> {output_file.name} written.")
+
+            if not config.standalone_audio.keep_original:
+                try:
+                    source.unlink()
+                    logger.info(f"Removed original {filename}.")
+                except OSError as e:
+                    logger.warning(f"Failed to remove original {filename}: {e}")
+
+            self.cache_manager.mark_processed(file_key, {
+                "timestamp": datetime.now().isoformat(),
+                "action": "converted",
+                "original_codecs": "standalone_audio",
+                "conversion_time": conversion_metrics["conversion_time"],
+                "ffmpeg_command": conversion_metrics["command"],
+                "output_file": str(output_file),
+                "kept_original": config.standalone_audio.keep_original,
+            })
+            logger.info(f"Metrics: conversion_time={conversion_metrics['conversion_time']:.2f}s")
+
+        except DiskSpaceError as e:
+            logger.error(f"Skipping standalone conversion of {filename}: {e}")
+            self.cache_manager.mark_processed(file_key, {
+                "timestamp": datetime.now().isoformat(),
+                "action": "skipped",
+                "reason": "insufficient_disk_space",
+                "error": str(e),
+            })
+        except (ConversionError, ConversionTimeoutError) as e:
+            logger.error(f"Standalone conversion failed for {filename}: {e}")
+            self.cache_manager.mark_processed(file_key, {
+                "timestamp": datetime.now().isoformat(),
+                "action": "failed",
+                "error_type": type(e).__name__,
+                "error": str(e),
+            })
+            if temp_file.exists():
+                temp_file.unlink()
+        except Exception as e:
+            logger.error(f"Unexpected error processing standalone {filename}: {e}")
+            self.cache_manager.mark_processed(file_key, {
+                "timestamp": datetime.now().isoformat(),
+                "action": "failed",
+                "error_type": "unexpected_error",
+                "error": str(e),
+            })
+            if temp_file.exists():
+                temp_file.unlink()

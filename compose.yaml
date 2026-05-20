@@ -35,6 +35,11 @@ services:
       FFMPEG_PERFORMANCE_FLAGS: "+discardcorrupt+genpts+igndts+ignidx"
       FFMPEG_AVOID_NEGATIVE_TS: make_zero
       FFMPEG_MAX_MUXING_QUEUE_SIZE: "1024"
+      # Standalone audio files (e.g. external .dts loaded by Jellyfin)
+      PROCESS_STANDALONE_AUDIO: "false"
+      STANDALONE_AUDIO_EXTENSIONS: "dts,thd,truehd,dtshd"
+      STANDALONE_AUDIO_KEEP_ORIGINAL: "false"
+      STANDALONE_AUDIO_OUTPUT_EXTENSION: "ec3"
     restart: no # Change this setting if you run with the scheduler
     network_mode: none
     deploy:

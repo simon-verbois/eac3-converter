@@ -133,6 +133,52 @@ class AudioProcessor:
             "command": " ".join(command)
         }
 
+    def convert_standalone_audio(self, input_file: str, output_file: str) -> Dict[str, Any]:
+        """Convert a standalone audio file (e.g. .dts) to a standalone EAC3 file."""
+        start_time = time.time()
+
+        streams = self.get_audio_streams_info(input_file)
+        channels = int(streams[0].get("channels", 2) or 2) if streams else 2
+        bitrate = self._bitrate_for_channels(channels)
+        logger.debug(f"Standalone audio: channels={channels} -> bitrate={bitrate}")
+
+        command = [
+            "ffmpeg", "-i", input_file, "-hide_banner",
+            "-loglevel", "error" if not self.debug_mode else "info",
+            "-threads", str(config.ffmpeg.threads),
+            "-strict", config.ffmpeg.strict_mode,
+            "-vn", "-map", "0:a", "-c:a", "eac3",
+            "-b:a", bitrate,
+            "-dialnorm", str(config.ffmpeg.dialnorm),
+            "-mixing_level", str(config.ffmpeg.mixing_level),
+            "-f", "eac3",
+            output_file, "-y"
+        ]
+
+        logger.debug(f"Running standalone ffmpeg command: {' '.join(command)}")
+        logger.info("Starting standalone audio conversion...")
+
+        try:
+            subprocess.run(command, check=True, timeout=config.ffmpeg.timeout_seconds,
+                           capture_output=True, text=True)
+        except subprocess.TimeoutExpired:
+            logger.error(f"Standalone conversion timeout for {input_file} after {config.ffmpeg.timeout_seconds}s")
+            raise ConversionTimeoutError(f"Timeout after {config.ffmpeg.timeout_seconds}s for {input_file}")
+        except subprocess.CalledProcessError as e:
+            logger.error(f"ffmpeg failed with return code {e.returncode}: {e.stderr}")
+            raise ConversionError(f"ffmpeg error (code {e.returncode}): {e.stderr.strip()}")
+        except Exception as e:
+            logger.error(f"Unexpected error during standalone conversion: {e}")
+            raise ConversionError(f"Unexpected conversion error: {e}")
+
+        conversion_time = time.time() - start_time
+        logger.info(f"Standalone conversion completed in {conversion_time:.2f}s")
+
+        return {
+            "conversion_time": conversion_time,
+            "command": " ".join(command)
+        }
+
     def get_audio_streams_info(self, file_path: str) -> List[Dict[str, Any]]:
         """Get detailed information about audio streams."""
         command = [

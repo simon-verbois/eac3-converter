@@ -51,6 +51,14 @@ class ScheduleConfig:
 
 
 @dataclass
+class StandaloneAudioConfig:
+    enabled: bool = False
+    extensions: tuple[str, ...] = ("dts", "thd", "truehd", "dtshd")
+    keep_original: bool = False
+    output_extension: str = "ec3"
+
+
+@dataclass
 class FFMpegConfig:
     bitrate_stereo: str = "384k"
     bitrate_surround: str = "1536k"
@@ -73,6 +81,7 @@ class Config:
     app: AppConfig = field(default_factory=AppConfig)
     schedule: ScheduleConfig = field(default_factory=ScheduleConfig)
     ffmpeg: FFMpegConfig = field(default_factory=FFMpegConfig)
+    standalone_audio: StandaloneAudioConfig = field(default_factory=StandaloneAudioConfig)
     tz: str = "Europe/Paris"
 
     def get_parsed_start_time(self) -> tuple[int, int]:
@@ -110,6 +119,16 @@ def load_config() -> Config:
             performance_flags=_env_str("FFMPEG_PERFORMANCE_FLAGS", "+discardcorrupt+genpts+igndts+ignidx"),
             avoid_negative_ts=_env_str("FFMPEG_AVOID_NEGATIVE_TS", "make_zero"),
             max_muxing_queue_size=_env_int("FFMPEG_MAX_MUXING_QUEUE_SIZE", 1024),
+        ),
+        standalone_audio=StandaloneAudioConfig(
+            enabled=_env_bool("PROCESS_STANDALONE_AUDIO", False),
+            extensions=tuple(
+                ext.strip().lower().lstrip(".")
+                for ext in _env_str("STANDALONE_AUDIO_EXTENSIONS", "dts,thd,truehd,dtshd").split(",")
+                if ext.strip()
+            ),
+            keep_original=_env_bool("STANDALONE_AUDIO_KEEP_ORIGINAL", False),
+            output_extension=_env_str("STANDALONE_AUDIO_OUTPUT_EXTENSION", "ec3").strip().lstrip("."),
         ),
         tz=_env_str("TZ", "Europe/Paris"),
     )

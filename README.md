@@ -13,6 +13,7 @@ Automatically converts DTS and TrueHD audio tracks to EAC3 format in MKV files. 
 ## Features
 
 - **Auto-detection** of DTS/TrueHD tracks in MKV files
+- **Standalone audio support** (opt-in) for loose `.dts`/`.thd` files alongside videos (e.g. external tracks loaded by Jellyfin)
 - **High-performance** ffmpeg conversion with threading
 - **SQLite cache** to avoid re-processing files (atomic, fast, queryable)
 - **Scheduled processing** or on-demand execution
@@ -46,6 +47,22 @@ All settings are configured via environment variables. See [compose.yaml](compos
 | `FFMPEG_PERFORMANCE_FLAGS` | `+discardcorrupt+genpts+igndts+ignidx` | Corruption/perf flags |
 | `FFMPEG_AVOID_NEGATIVE_TS` | `make_zero` | Negative timestamp handling |
 | `FFMPEG_MAX_MUXING_QUEUE_SIZE` | `1024` | Mux buffer size |
+| `PROCESS_STANDALONE_AUDIO` | `false` | Also convert loose audio files (e.g. external `.dts` next to a movie that Jellyfin auto-loads) |
+| `STANDALONE_AUDIO_EXTENSIONS` | `dts,thd,truehd,dtshd` | Comma-separated extensions to scan as standalone audio |
+| `STANDALONE_AUDIO_KEEP_ORIGINAL` | `false` | Keep the original audio file alongside the converted `.ec3` instead of deleting it |
+| `STANDALONE_AUDIO_OUTPUT_EXTENSION` | `ec3` | Output file extension for converted standalone audio |
+
+### Standalone audio files
+
+By default the converter only touches `.mkv` files. If you have **loose audio files** sitting next to your movies (the way Jellyfin auto-loads external tracks — e.g. `Movie.mkv` + `Movie.dts`), set `PROCESS_STANDALONE_AUDIO=true` and they'll be converted to EAC3 in a second pass.
+
+How it works:
+
+- The scanner picks up files matching `STANDALONE_AUDIO_EXTENSIONS` (default `dts,thd,truehd,dtshd`).
+- Each file is probed with `ffprobe` first — already-EAC3/AC3 files and unsupported codecs are skipped (and remembered in the cache so they're not re-probed daily).
+- DTS / TrueHD files are converted to a sibling `<name>.ec3` (Jellyfin recognises this extension as an external track).
+- The original file is **deleted** after a successful conversion. Set `STANDALONE_AUDIO_KEEP_ORIGINAL=true` to keep both side by side.
+- Channel-aware bitrate (`FFMPEG_BITRATE_STEREO` / `_SURROUND` / `_SURROUND_PLUS`), `FFMPEG_DIALNORM` and `FFMPEG_MIXING_LEVEL` apply the same way as for in-MKV tracks.
 
 ### Start
 

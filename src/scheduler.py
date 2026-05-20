@@ -39,15 +39,21 @@ class Scheduler:
         return False
 
     def process_files(self) -> None:
-        """Process all MKV files in the input directory."""
+        """Process all MKV files (and optionally standalone audio files) in the input directory."""
         files_to_process = self.file_processor.find_mkv_files(self.input_dir)
-
-        logger.debug(f"Total files to process: {len(files_to_process)}")
+        logger.debug(f"Total MKV files to process: {len(files_to_process)}")
 
         processed_count = 0
         for file_path in files_to_process:
             self.file_processor.process_file(file_path)
             processed_count += 1
+
+        if config.standalone_audio.enabled:
+            audio_files = self.file_processor.find_standalone_audio_files(self.input_dir)
+            logger.info(f"Standalone audio enabled: {len(audio_files)} file(s) to inspect")
+            for file_path in audio_files:
+                self.file_processor.process_standalone_audio_file(file_path)
+                processed_count += 1
 
         # Get cache size for summary
         cache_size = self.file_processor.cache_manager.get_cache_size()
