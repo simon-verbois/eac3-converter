@@ -3,12 +3,17 @@ test_data*/
 test_data_copy*/
 reset-test-data.sh
 
-# Config
-config/config.toml
-
 # Cache
 cache/
 *.cache
+*.db
+*.db-wal
+*.db-shm
 
 # Temporary files
 .temp_*
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/

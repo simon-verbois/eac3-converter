@@ -10,7 +10,11 @@ services:
     volumes:
       - ./test_data:/app/input:rw
       - ./cache:/app/cache:rw
-      - ./config:/app/config:ro
+    environment:
+      TZ: Europe/Paris
+      DEBUG_MODE: "true"
+      START_TIME: "04:00"
+      RUN_IMMEDIATELY: "true"
     restart: "no"
     network_mode: none
     deploy:
@@ -18,7 +22,7 @@ services:
         limits:
           cpus: '0.5'
     healthcheck:
-      test: ["CMD", "pgrep", "-f", "main.py"]
+      test: ["CMD", "pgrep", "-f", "src.main"]
       interval: 1m
       timeout: 10s
       retries: 3

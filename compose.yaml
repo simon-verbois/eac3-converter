@@ -11,8 +11,26 @@ services:
       - ./path/to/folder1:/app/input/folder1:rw
       - ./path/to/folder2:/app/input/folder2:rw
       - eac3_cache:/app/cache:rw
-      - ./config:/app/config:ro
-    restart: no # Change this settings if you run with the scheduler
+    environment:
+      # System
+      TZ: Europe/Paris
+      # App
+      DEBUG_MODE: "false"
+      # Schedule
+      START_TIME: "04:00"
+      RUN_IMMEDIATELY: "false"
+      # FFmpeg
+      FFMPEG_AUDIO_BITRATE: 640k
+      FFMPEG_STRICT_MODE: "-2"
+      FFMPEG_FLAGS: "+genpts"
+      FFMPEG_TIMEOUT_SECONDS: "3600"
+      FFMPEG_MIN_DISK_SPACE_RATIO: "1.5"
+      FFMPEG_THREADS: "0"
+      FFMPEG_BUFSIZE: 128k
+      FFMPEG_PERFORMANCE_FLAGS: "+discardcorrupt+genpts+igndts+ignidx"
+      FFMPEG_AVOID_NEGATIVE_TS: make_zero
+      FFMPEG_MAX_MUXING_QUEUE_SIZE: "1024"
+    restart: no # Change this setting if you run with the scheduler
     network_mode: none
     deploy:
       resources:
@@ -23,7 +41,7 @@ services:
           cpus: '1.0'
           memory: '512M'
     healthcheck:
-      test: ["CMD", "pgrep", "-f", "main.py"]
+      test: ["CMD", "pgrep", "-f", "src.main"]
       interval: 1m
       timeout: 10s
       retries: 3

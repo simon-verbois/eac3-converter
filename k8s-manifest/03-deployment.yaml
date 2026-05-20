@@ -19,6 +19,9 @@ spec:
       containers:
       - name: eac3-converter
         image: simonverbois/eac3-converter:latest
+        envFrom:
+        - configMapRef:
+            name: eac3-converter-config
         resources:
           limits:
             cpu: "4"
@@ -31,15 +34,12 @@ spec:
             command:
             - pgrep
             - -f
-            - main.py
+            - src.main
           initialDelaySeconds: 30
           periodSeconds: 60
           timeoutSeconds: 10
           failureThreshold: 3
         volumeMounts:
-        - name: config-volume
-          mountPath: /app/config
-          readOnly: true
         - name: cache-volume
           mountPath: /app/cache
         - name: folder1
@@ -48,9 +48,6 @@ spec:
           mountPath: /app/input/folder2
 
       volumes:
-      - name: config-volume
-        configMap:
-          name: eac3-converter-config
       - name: cache-volume
         persistentVolumeClaim:
           claimName: eac3-converter-cache

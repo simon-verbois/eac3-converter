@@ -1,60 +1,69 @@
 import json
 import logging
-import os
+import sqlite3
 from pathlib import Path
 from typing import Dict, Any
 
 logger = logging.getLogger("eac3_converter")
 
 
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS processed_files (
+    file_key TEXT PRIMARY KEY,
+    path TEXT NOT NULL,
+    size INTEGER,
+    mtime REAL,
+    action TEXT,
+    timestamp TEXT,
+    metadata_json TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_path ON processed_files(path);
+"""
+
+
 class CacheManager:
-    """Manages the cache of processed files."""
+    """SQLite-backed cache of processed files."""
 
-    def __init__(self, cache_file: str):
-        self.cache_file = Path(cache_file)
-        self.cache: Dict[str, Any] = {}
-        self._ensure_cache_directory()
-
-    def _ensure_cache_directory(self):
-        """Ensure the cache directory exists."""
-        self.cache_file.parent.mkdir(parents=True, exist_ok=True)
-
-    def load_cache(self) -> Dict[str, Any]:
-        """Load the cache from file."""
-        if self.cache_file.exists():
-            try:
-                with open(self.cache_file, 'r', encoding='utf-8') as f:
-                    self.cache = json.load(f)
-                logger.info(f"Loaded cache with {len(self.cache)} entries")
-            except json.JSONDecodeError:
-                logger.warning(f"Cache file {self.cache_file} is corrupted. Creating new cache.")
-                self.cache = {}
-            except Exception as e:
-                logger.error(f"Error loading cache: {e}")
-                self.cache = {}
-        else:
-            logger.info("No existing cache file found, starting with empty cache")
-            self.cache = {}
-        return self.cache
-
-    def save_cache(self):
-        """Save the cache to file."""
-        try:
-            with open(self.cache_file, 'w', encoding='utf-8') as f:
-                json.dump(self.cache, f, indent=2)
-            logger.debug(f"Saved cache with {len(self.cache)} entries")
-        except Exception as e:
-            logger.error(f"Error saving cache: {e}")
+    def __init__(self, db_path: str):
+        self.db_path = Path(db_path)
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self.conn = sqlite3.connect(str(self.db_path), isolation_level=None)
+        self.conn.execute("PRAGMA journal_mode=WAL;")
+        self.conn.execute("PRAGMA synchronous=NORMAL;")
+        self.conn.executescript(SCHEMA)
+        logger.info(f"Cache DB opened at {self.db_path} ({self.get_cache_size()} entries)")
 
     def is_processed(self, file_key: str) -> bool:
-        """Check if a file has been processed."""
-        return file_key in self.cache
+        row = self.conn.execute(
+            "SELECT 1 FROM processed_files WHERE file_key = ? LIMIT 1",
+            (file_key,),
+        ).fetchone()
+        return row is not None
 
-    def mark_processed(self, file_key: str, metadata: Dict[str, Any]):
-        """Mark a file as processed with metadata."""
-        self.cache[file_key] = metadata
-        self.save_cache()
+    def mark_processed(self, file_key: str, metadata: Dict[str, Any]) -> None:
+        path = metadata.get("path", "")
+        size = metadata.get("size")
+        mtime = metadata.get("mtime")
+        action = metadata.get("action")
+        timestamp = metadata.get("timestamp")
+        extras = {
+            k: v for k, v in metadata.items()
+            if k not in ("path", "size", "mtime", "action", "timestamp")
+        }
+        self.conn.execute(
+            "INSERT OR REPLACE INTO processed_files "
+            "(file_key, path, size, mtime, action, timestamp, metadata_json) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (file_key, path, size, mtime, action, timestamp, json.dumps(extras)),
+        )
 
     def get_cache_size(self) -> int:
-        """Get the number of cached entries."""
-        return len(self.cache)
+        row = self.conn.execute("SELECT COUNT(*) FROM processed_files").fetchone()
+        return int(row[0]) if row else 0
+
+    def close(self) -> None:
+        try:
+            self.conn.close()
+            logger.debug("Cache DB connection closed")
+        except Exception as e:
+            logger.warning(f"Error closing cache DB: {e}")

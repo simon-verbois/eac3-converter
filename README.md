@@ -14,38 +14,51 @@ Automatically converts DTS and TrueHD audio tracks to EAC3 format in MKV files. 
 
 - **Auto-detection** of DTS/TrueHD tracks in MKV files
 - **High-performance** ffmpeg conversion with threading
-- **Smart caching** to avoid re-processing files
+- **SQLite cache** to avoid re-processing files (atomic, fast, queryable)
 - **Scheduled processing** or on-demand execution
 - **Docker & Kubernetes** ready for production deployment
-- **TOML configuration** for all settings
+- **Environment-variable configuration** (12-factor friendly)
 
 
 ## Quick Start
 
 ### Configuration
 
-See `config/config.toml.template` for all available options with inline comments explaining each parameter.<br>
-And rename the template to `config/config.toml`.
+All settings are configured via environment variables. See [compose.yaml](compose.yaml) for the full list with default values.
+
+| Variable | Default | Description |
+|---|---|---|
+| `TZ` | `Europe/Paris` | System timezone |
+| `DEBUG_MODE` | `false` | Verbose logging |
+| `START_TIME` | `04:00` | Daily processing time (HH:MM) |
+| `RUN_IMMEDIATELY` | `false` | Process once on startup and exit |
+| `FFMPEG_AUDIO_BITRATE` | `640k` | EAC3 output bitrate |
+| `FFMPEG_TIMEOUT_SECONDS` | `3600` | Max conversion time per file |
+| `FFMPEG_MIN_DISK_SPACE_RATIO` | `1.5` | Required free space multiplier |
+| `FFMPEG_THREADS` | `0` | ffmpeg threads (0 = auto) |
+| `FFMPEG_STRICT_MODE` | `-2` | ffmpeg strict compliance |
+| `FFMPEG_FLAGS` | `+genpts` | ffmpeg input flags |
+| `FFMPEG_BUFSIZE` | `128k` | Audio buffer size |
+| `FFMPEG_PERFORMANCE_FLAGS` | `+discardcorrupt+genpts+igndts+ignidx` | Corruption/perf flags |
+| `FFMPEG_AVOID_NEGATIVE_TS` | `make_zero` | Negative timestamp handling |
+| `FFMPEG_MAX_MUXING_QUEUE_SIZE` | `1024` | Mux buffer size |
 
 ### Start
 
 ```bash
-# Clone repository
 git clone <repository-url>
 cd EAC3_Converter
 
-# Edit compose and config with your data
+# Edit compose.yaml to point at your media folders and tweak env vars
 vim compose.yaml
-vim config/config.toml
 
-# Build and run
 docker compose up
 ```
 
 ## Deployment
 
-- **Docker**: See compose.yaml for production.
-- **Kubernetes**: See [k8s-manifest/](k8s-manifest/) for manifests.
+- **Docker**: See [compose.yaml](compose.yaml) for production.
+- **Kubernetes**: See [k8s-manifest/](k8s-manifest/) for manifests (ConfigMap holds env vars).
 
 ## Development
 
@@ -53,6 +66,13 @@ Local build and run with:
 
 ```bash
 docker compose -f compose-testing.yaml build && docker compose -f compose-testing.yaml up
+```
+
+## Tests
+
+```bash
+pip install -r requirements-dev.txt
+pytest tests/ -v
 ```
 
 ## License
