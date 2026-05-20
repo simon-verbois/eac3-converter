@@ -24,7 +24,7 @@ jobs:
             type=raw,value=latest
           labels: |
             org.opencontainers.image.version=${{ steps.meta.outputs.version }}
-            org.opencontainers.image.revision=${{ gitea.sha }}
+            org.opencontainers.image.revision=${{ github.sha }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
