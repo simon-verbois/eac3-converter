@@ -96,6 +96,10 @@ pip install -r requirements-dev.txt
 pytest tests/ -v
 ```
 
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for the release history.
+
 ## License
 
 See LICENSE file.
