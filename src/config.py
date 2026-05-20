@@ -52,7 +52,11 @@ class ScheduleConfig:
 
 @dataclass
 class FFMpegConfig:
-    audio_bitrate: str = "640k"
+    bitrate_stereo: str = "384k"
+    bitrate_surround: str = "1536k"
+    bitrate_surround_plus: str = "1664k"
+    dialnorm: int = -27
+    mixing_level: int = 80
     strict_mode: str = "-2"
     flags: str = "+genpts"
     timeout_seconds: int = 3600
@@ -92,7 +96,11 @@ def load_config() -> Config:
             run_immediately=_env_bool("RUN_IMMEDIATELY", False),
         ),
         ffmpeg=FFMpegConfig(
-            audio_bitrate=_env_str("FFMPEG_AUDIO_BITRATE", "640k"),
+            bitrate_stereo=_env_str("FFMPEG_BITRATE_STEREO", "384k"),
+            bitrate_surround=_env_str("FFMPEG_BITRATE_SURROUND", "1536k"),
+            bitrate_surround_plus=_env_str("FFMPEG_BITRATE_SURROUND_PLUS", "1664k"),
+            dialnorm=_env_int("FFMPEG_DIALNORM", -27),
+            mixing_level=_env_int("FFMPEG_MIXING_LEVEL", 80),
             strict_mode=_env_str("FFMPEG_STRICT_MODE", "-2"),
             flags=_env_str("FFMPEG_FLAGS", "+genpts"),
             timeout_seconds=_env_int("FFMPEG_TIMEOUT_SECONDS", 3600),

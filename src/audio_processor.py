@@ -73,9 +73,25 @@ class AudioProcessor:
             logger.error(f"Error checking disk space for {file_path}: {e}")
             return False
 
+    def _bitrate_for_channels(self, channels: int) -> str:
+        """Pick the EAC3 bitrate based on the source channel count."""
+        if channels <= 2:
+            return config.ffmpeg.bitrate_stereo
+        if channels <= 6:
+            return config.ffmpeg.bitrate_surround
+        return config.ffmpeg.bitrate_surround_plus
+
     def convert_audio_tracks(self, input_file: str, temp_file: str) -> Dict[str, Any]:
         """Convert DTS or TrueHD tracks to EAC3 with performance optimizations."""
         start_time = time.time()
+
+        streams = self.get_audio_streams_info(input_file)
+        per_stream_bitrate_args: List[str] = []
+        for i, stream in enumerate(streams):
+            channels = int(stream.get("channels", 2) or 2)
+            bitrate = self._bitrate_for_channels(channels)
+            per_stream_bitrate_args.extend([f"-b:a:{i}", bitrate])
+            logger.debug(f"Stream {i}: channels={channels} -> bitrate={bitrate}")
 
         command = [
             "ffmpeg", "-i", input_file, "-hide_banner",
@@ -84,9 +100,12 @@ class AudioProcessor:
             "-fflags", config.ffmpeg.performance_flags,
             "-avoid_negative_ts", config.ffmpeg.avoid_negative_ts,
             "-max_muxing_queue_size", str(config.ffmpeg.max_muxing_queue_size),
-            "-b:a", config.ffmpeg.audio_bitrate, "-bufsize", config.ffmpeg.bufsize,
+            "-bufsize", config.ffmpeg.bufsize,
             "-strict", config.ffmpeg.strict_mode,
             "-map", "0", "-c:v", "copy", "-c:a", "eac3", "-c:s", "copy",
+            *per_stream_bitrate_args,
+            "-dialnorm", str(config.ffmpeg.dialnorm),
+            "-mixing_level", str(config.ffmpeg.mixing_level),
             temp_file, "-y"
         ]
 

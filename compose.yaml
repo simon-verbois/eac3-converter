@@ -19,8 +19,13 @@ services:
       # Schedule
       START_TIME: "04:00"
       RUN_IMMEDIATELY: "false"
-      # FFmpeg
-      FFMPEG_AUDIO_BITRATE: 640k
+      # FFmpeg - audio quality (dynamic bitrate based on channel count)
+      FFMPEG_BITRATE_STEREO: 384k
+      FFMPEG_BITRATE_SURROUND: 1536k
+      FFMPEG_BITRATE_SURROUND_PLUS: 1664k
+      FFMPEG_DIALNORM: "-27"
+      FFMPEG_MIXING_LEVEL: "80"
+      # FFmpeg - other
       FFMPEG_STRICT_MODE: "-2"
       FFMPEG_FLAGS: "+genpts"
       FFMPEG_TIMEOUT_SECONDS: "3600"

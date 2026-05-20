@@ -5,7 +5,9 @@ from src.exceptions import ConfigError
 
 ENV_VARS = [
     "DEBUG_MODE", "START_TIME", "RUN_IMMEDIATELY", "TZ",
-    "FFMPEG_AUDIO_BITRATE", "FFMPEG_STRICT_MODE", "FFMPEG_FLAGS",
+    "FFMPEG_BITRATE_STEREO", "FFMPEG_BITRATE_SURROUND", "FFMPEG_BITRATE_SURROUND_PLUS",
+    "FFMPEG_DIALNORM", "FFMPEG_MIXING_LEVEL",
+    "FFMPEG_STRICT_MODE", "FFMPEG_FLAGS",
     "FFMPEG_TIMEOUT_SECONDS", "FFMPEG_MIN_DISK_SPACE_RATIO", "FFMPEG_THREADS",
     "FFMPEG_BUFSIZE", "FFMPEG_PERFORMANCE_FLAGS", "FFMPEG_AVOID_NEGATIVE_TS",
     "FFMPEG_MAX_MUXING_QUEUE_SIZE",
@@ -24,7 +26,11 @@ def test_defaults_apply_when_no_env_set():
     assert cfg.schedule.start_time == "04:00"
     assert cfg.schedule.run_immediately is False
     assert cfg.tz == "Europe/Paris"
-    assert cfg.ffmpeg.audio_bitrate == "640k"
+    assert cfg.ffmpeg.bitrate_stereo == "384k"
+    assert cfg.ffmpeg.bitrate_surround == "1536k"
+    assert cfg.ffmpeg.bitrate_surround_plus == "1664k"
+    assert cfg.ffmpeg.dialnorm == -27
+    assert cfg.ffmpeg.mixing_level == 80
     assert cfg.ffmpeg.timeout_seconds == 3600
     assert cfg.ffmpeg.min_disk_space_ratio == 1.5
     assert cfg.ffmpeg.threads == 0
@@ -77,3 +83,24 @@ def test_get_parsed_start_time(monkeypatch):
     monkeypatch.setenv("START_TIME", "21:30")
     cfg = load_config()
     assert cfg.get_parsed_start_time() == (21, 30)
+
+
+def test_dialnorm_override(monkeypatch):
+    monkeypatch.setenv("FFMPEG_DIALNORM", "-31")
+    assert load_config().ffmpeg.dialnorm == -31
+
+
+def test_dialnorm_invalid(monkeypatch):
+    monkeypatch.setenv("FFMPEG_DIALNORM", "abc")
+    with pytest.raises(ConfigError):
+        load_config()
+
+
+def test_bitrate_overrides(monkeypatch):
+    monkeypatch.setenv("FFMPEG_BITRATE_STEREO", "256k")
+    monkeypatch.setenv("FFMPEG_BITRATE_SURROUND", "1024k")
+    monkeypatch.setenv("FFMPEG_BITRATE_SURROUND_PLUS", "2048k")
+    cfg = load_config()
+    assert cfg.ffmpeg.bitrate_stereo == "256k"
+    assert cfg.ffmpeg.bitrate_surround == "1024k"
+    assert cfg.ffmpeg.bitrate_surround_plus == "2048k"
