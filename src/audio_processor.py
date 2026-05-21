@@ -90,13 +90,49 @@ class AudioProcessor:
             return f"{existing_title} [EAC3]"
         return f"EAC3 {layout}"
 
-    def _bitrate_for_channels(self, channels: int) -> str:
-        """Pick the EAC3 bitrate based on the source channel count."""
-        if channels <= 2:
-            return config.ffmpeg.bitrate_stereo
-        if channels <= 6:
-            return config.ffmpeg.bitrate_surround
-        return config.ffmpeg.bitrate_surround_plus
+    @staticmethod
+    def _is_lossless(codec: str, profile: str) -> bool:
+        """Return True for codecs whose source bitrate is not a quality cap.
+
+        TrueHD is always lossless. DTS variants are lossless only when the
+        profile says 'MA' (DTS-HD Master Audio). DTS, DTS-HD HRA, DTS-ES are
+        lossy and their bit_rate is a meaningful quality ceiling.
+        """
+        codec = (codec or "").lower()
+        profile = (profile or "").lower()
+        if codec == "truehd":
+            return True
+        if codec == "dts" and "ma" in profile:
+            return True
+        return False
+
+    def _target_bitrate(self, stream: Dict[str, Any]) -> str:
+        """Compute the EAC3 output bitrate for a single audio stream.
+
+        target = channels * FFMPEG_KBPS_PER_CHANNEL, then capped at the
+        source bitrate if the source is lossy (no point encoding higher
+        than an already-compressed source). Clamped to ffmpeg's EAC3
+        accepted range [32, 6144] kbps.
+        """
+        channels = int(stream.get("channels", 2) or 2)
+        target_kbps = channels * config.ffmpeg.kbps_per_channel
+
+        try:
+            source_kbps = int(stream.get("bit_rate") or 0) // 1000
+        except (TypeError, ValueError):
+            source_kbps = 0
+
+        codec = stream.get("codec_name", "")
+        profile = stream.get("profile", "")
+        if not self._is_lossless(codec, profile) and 0 < source_kbps < target_kbps:
+            logger.debug(
+                f"Capping target {target_kbps}k -> source {source_kbps}k "
+                f"(lossy {codec}/{profile})"
+            )
+            target_kbps = source_kbps
+
+        target_kbps = max(32, min(6144, target_kbps))
+        return f"{target_kbps}k"
 
     def convert_audio_tracks(self, input_file: str, temp_file: str) -> Dict[str, Any]:
         """Re-encode DTS/TrueHD audio streams to EAC3; copy other streams as-is.
@@ -116,7 +152,7 @@ class AudioProcessor:
             codec = (stream.get("codec_name") or "").lower()
             channels = int(stream.get("channels", 2) or 2)
             if codec in ("dts", "truehd"):
-                bitrate = self._bitrate_for_channels(channels)
+                bitrate = self._target_bitrate(stream)
                 existing_title = (stream.get("tags") or {}).get("title", "")
                 new_title = self._rewrite_title(existing_title, channels)
                 per_stream_codec_args.extend([

@@ -33,9 +33,7 @@ All settings are configured via environment variables. See [compose.yaml](compos
 | `DEBUG_MODE` | `false` | Verbose logging |
 | `START_TIME` | `04:00` | Daily processing time (HH:MM) |
 | `RUN_IMMEDIATELY` | `false` | Process once on startup and exit |
-| `FFMPEG_BITRATE_STEREO` | `384k` | EAC3 bitrate for 1–2 channel streams |
-| `FFMPEG_BITRATE_SURROUND` | `1536k` | EAC3 bitrate for 3–6 channel streams (5.1) |
-| `FFMPEG_BITRATE_SURROUND_PLUS` | `1664k` | EAC3 bitrate for 7+ channel streams (7.1) |
+| `FFMPEG_KBPS_PER_CHANNEL` | `256` | Target EAC3 bitrate per audio channel. Total bitrate = channels × this. Capped at source bitrate for lossy sources (DTS core, DTS-HD HRA). |
 | `FFMPEG_DIALNORM` | `-27` | Dialog normalization level (-31..-1) |
 | `FFMPEG_MIXING_LEVEL` | `80` | Mixing level metadata (informational) |
 | `FFMPEG_TIMEOUT_SECONDS` | `3600` | Max conversion time per file |

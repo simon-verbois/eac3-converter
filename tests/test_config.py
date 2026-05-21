@@ -5,8 +5,7 @@ from src.exceptions import ConfigError
 
 ENV_VARS = [
     "DEBUG_MODE", "START_TIME", "RUN_IMMEDIATELY", "TZ",
-    "FFMPEG_BITRATE_STEREO", "FFMPEG_BITRATE_SURROUND", "FFMPEG_BITRATE_SURROUND_PLUS",
-    "FFMPEG_DIALNORM", "FFMPEG_MIXING_LEVEL",
+    "FFMPEG_KBPS_PER_CHANNEL", "FFMPEG_DIALNORM", "FFMPEG_MIXING_LEVEL",
     "FFMPEG_STRICT_MODE", "FFMPEG_FLAGS",
     "FFMPEG_TIMEOUT_SECONDS", "FFMPEG_MIN_DISK_SPACE_RATIO", "FFMPEG_THREADS",
     "FFMPEG_BUFSIZE", "FFMPEG_PERFORMANCE_FLAGS", "FFMPEG_AVOID_NEGATIVE_TS",
@@ -28,9 +27,7 @@ def test_defaults_apply_when_no_env_set():
     assert cfg.schedule.start_time == "04:00"
     assert cfg.schedule.run_immediately is False
     assert cfg.tz == "Europe/Paris"
-    assert cfg.ffmpeg.bitrate_stereo == "384k"
-    assert cfg.ffmpeg.bitrate_surround == "1536k"
-    assert cfg.ffmpeg.bitrate_surround_plus == "1664k"
+    assert cfg.ffmpeg.kbps_per_channel == 256
     assert cfg.ffmpeg.dialnorm == -27
     assert cfg.ffmpeg.mixing_level == 80
     assert cfg.ffmpeg.timeout_seconds == 3600
@@ -127,11 +124,12 @@ def test_standalone_audio_output_extension_strips_dot(monkeypatch):
     assert load_config().standalone_audio.output_extension == "eac3"
 
 
-def test_bitrate_overrides(monkeypatch):
-    monkeypatch.setenv("FFMPEG_BITRATE_STEREO", "256k")
-    monkeypatch.setenv("FFMPEG_BITRATE_SURROUND", "1024k")
-    monkeypatch.setenv("FFMPEG_BITRATE_SURROUND_PLUS", "2048k")
-    cfg = load_config()
-    assert cfg.ffmpeg.bitrate_stereo == "256k"
-    assert cfg.ffmpeg.bitrate_surround == "1024k"
-    assert cfg.ffmpeg.bitrate_surround_plus == "2048k"
+def test_kbps_per_channel_override(monkeypatch):
+    monkeypatch.setenv("FFMPEG_KBPS_PER_CHANNEL", "192")
+    assert load_config().ffmpeg.kbps_per_channel == 192
+
+
+def test_kbps_per_channel_invalid(monkeypatch):
+    monkeypatch.setenv("FFMPEG_KBPS_PER_CHANNEL", "high")
+    with pytest.raises(ConfigError):
+        load_config()

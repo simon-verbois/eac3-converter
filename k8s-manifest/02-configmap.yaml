@@ -5,21 +5,46 @@ metadata:
   name: eac3-converter-config
   namespace: eac3-converter
 data:
+  # --- System --------------------------------------------------------------
+  # IANA timezone used for scheduling and log timestamps.
   TZ: "Europe/Paris"
+
+  # --- App -----------------------------------------------------------------
+  # true = verbose logging (DEBUG level) + ffmpeg "info" loglevel.
   DEBUG_MODE: "false"
+
+  # --- Schedule ------------------------------------------------------------
+  # Daily run time in HH:MM (24h, local TZ).
   START_TIME: "04:00"
+  # true = process once at startup and exit (useful in K8s Jobs / CronJobs).
   RUN_IMMEDIATELY: "false"
-  FFMPEG_BITRATE_STEREO: "384k"
-  FFMPEG_BITRATE_SURROUND: "1536k"
-  FFMPEG_BITRATE_SURROUND_PLUS: "1664k"
+
+  # --- FFmpeg: audio quality ----------------------------------------------
+  # Target EAC3 bitrate per channel (kbps). Output bitrate per stream =
+  # channels * this. Capped at source bitrate for lossy sources (DTS core,
+  # DTS-HD HRA). Clamped to ffmpeg's [32, 6144] kbps range.
+  # 256 -> 512k stereo / 1536k 5.1 / 2048k 7.1
+  FFMPEG_KBPS_PER_CHANNEL: "256"
+  # Dialog normalization level (-31..-1, broadcast standard = -27).
   FFMPEG_DIALNORM: "-27"
+  # Mixing level metadata in dB SPL (informational; cosmetic).
   FFMPEG_MIXING_LEVEL: "80"
-  FFMPEG_STRICT_MODE: "-2"
-  FFMPEG_FLAGS: "+genpts"
-  FFMPEG_TIMEOUT_SECONDS: "3600"
-  FFMPEG_MIN_DISK_SPACE_RATIO: "1.5"
-  FFMPEG_THREADS: "0"
-  FFMPEG_BUFSIZE: "128k"
+
+  # --- FFmpeg: encoder / muxer tuning -------------------------------------
+  FFMPEG_STRICT_MODE: "-2"                                       # allow experimental EAC3 encoder
+  FFMPEG_FLAGS: "+genpts"                                        # regenerate PTS
+  FFMPEG_TIMEOUT_SECONDS: "3600"                                 # kill ffmpeg after N seconds
+  FFMPEG_MIN_DISK_SPACE_RATIO: "1.5"                             # require N x file size free
+  FFMPEG_THREADS: "0"                                            # 0 = auto-detect CPU cores
+  FFMPEG_BUFSIZE: "128k"                                         # rate-control buffer
   FFMPEG_PERFORMANCE_FLAGS: "+discardcorrupt+genpts+igndts+ignidx"
-  FFMPEG_AVOID_NEGATIVE_TS: "make_zero"
-  FFMPEG_MAX_MUXING_QUEUE_SIZE: "1024"
+  FFMPEG_AVOID_NEGATIVE_TS: "make_zero"                          # damaged-file timestamp handling
+  FFMPEG_MAX_MUXING_QUEUE_SIZE: "1024"                           # mux buffer size
+
+  # --- Standalone audio files ---------------------------------------------
+  # Convert loose .dts / .truehd files (e.g. external tracks loaded by
+  # Jellyfin) in addition to MKVs.
+  PROCESS_STANDALONE_AUDIO: "false"
+  STANDALONE_AUDIO_EXTENSIONS: "dts,thd,truehd,dtshd"
+  STANDALONE_AUDIO_KEEP_ORIGINAL: "false"
+  STANDALONE_AUDIO_OUTPUT_EXTENSION: "ec3"

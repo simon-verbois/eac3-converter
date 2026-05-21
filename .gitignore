@@ -6,6 +6,11 @@ reset-test-data.sh
 # Cache
 cache/
 *.cache
+
+# Local env overrides (.env.sample is committed as a template)
+.env
+.env.local
+.env.*.local
 *.db
 *.db-wal
 *.db-shm

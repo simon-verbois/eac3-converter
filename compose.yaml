@@ -1,7 +1,9 @@
 ################################################
 ##   EAC3 Converter - Convert audio to EAC3   ##
 ################################################
-
+#
+# See .env.sample for the full list of supported environment variables
+# with descriptions. Override any of them in the `environment:` block below.
 ---
 services:
   eac3_converter:
@@ -12,35 +14,42 @@ services:
       - ./path/to/folder2:/app/input/folder2:rw
       - eac3_cache:/app/cache:rw
     environment:
-      # System
-      TZ: Europe/Paris
-      # App
+      # --- System ---------------------------------------------------------
+      TZ: "Europe/Paris"
+
+      # --- App ------------------------------------------------------------
       DEBUG_MODE: "false"
-      # Schedule
+
+      # --- Schedule -------------------------------------------------------
       START_TIME: "04:00"
       RUN_IMMEDIATELY: "false"
-      # FFmpeg - audio quality (dynamic bitrate based on channel count)
-      FFMPEG_BITRATE_STEREO: 384k
-      FFMPEG_BITRATE_SURROUND: 1536k
-      FFMPEG_BITRATE_SURROUND_PLUS: 1664k
+
+      # --- FFmpeg: audio quality -----------------------------------------
+      # Output bitrate per stream = channels * FFMPEG_KBPS_PER_CHANNEL,
+      # capped at the source bitrate for lossy sources, clamped to
+      # ffmpeg's [32, 6144] kbps range.
+      FFMPEG_KBPS_PER_CHANNEL: "256"
       FFMPEG_DIALNORM: "-27"
       FFMPEG_MIXING_LEVEL: "80"
-      # FFmpeg - other
+
+      # --- FFmpeg: encoder / muxer tuning --------------------------------
       FFMPEG_STRICT_MODE: "-2"
       FFMPEG_FLAGS: "+genpts"
       FFMPEG_TIMEOUT_SECONDS: "3600"
       FFMPEG_MIN_DISK_SPACE_RATIO: "1.5"
       FFMPEG_THREADS: "0"
-      FFMPEG_BUFSIZE: 128k
+      FFMPEG_BUFSIZE: "128k"
       FFMPEG_PERFORMANCE_FLAGS: "+discardcorrupt+genpts+igndts+ignidx"
-      FFMPEG_AVOID_NEGATIVE_TS: make_zero
+      FFMPEG_AVOID_NEGATIVE_TS: "make_zero"
       FFMPEG_MAX_MUXING_QUEUE_SIZE: "1024"
-      # Standalone audio files (e.g. external .dts loaded by Jellyfin)
+
+      # --- Standalone audio files (loose .dts / .truehd) -----------------
       PROCESS_STANDALONE_AUDIO: "false"
       STANDALONE_AUDIO_EXTENSIONS: "dts,thd,truehd,dtshd"
       STANDALONE_AUDIO_KEEP_ORIGINAL: "false"
       STANDALONE_AUDIO_OUTPUT_EXTENSION: "ec3"
-    restart: no # Change this setting if you run with the scheduler
+
+    restart: "no" # change if you run with the internal scheduler
     network_mode: none
     deploy:
       resources:
