@@ -82,16 +82,43 @@ class AudioProcessor:
         return config.ffmpeg.bitrate_surround_plus
 
     def convert_audio_tracks(self, input_file: str, temp_file: str) -> Dict[str, Any]:
-        """Convert DTS or TrueHD tracks to EAC3 with performance optimizations."""
+        """Re-encode DTS/TrueHD audio streams to EAC3; copy other streams as-is.
+
+        Bitrate is chosen per stream from the source channel count. Streams
+        that are neither DTS nor TrueHD are passed through with -c:a:N copy
+        so the file does not grow from re-encoding low-bitrate dubs or
+        commentary tracks.
+        """
         start_time = time.time()
 
         streams = self.get_audio_streams_info(input_file)
-        per_stream_bitrate_args: List[str] = []
+        per_stream_codec_args: List[str] = []
+        encoded_count = 0
+        copied_count = 0
         for i, stream in enumerate(streams):
+            codec = (stream.get("codec_name") or "").lower()
             channels = int(stream.get("channels", 2) or 2)
-            bitrate = self._bitrate_for_channels(channels)
-            per_stream_bitrate_args.extend([f"-b:a:{i}", bitrate])
-            logger.debug(f"Stream {i}: channels={channels} -> bitrate={bitrate}")
+            if codec in ("dts", "truehd"):
+                bitrate = self._bitrate_for_channels(channels)
+                per_stream_codec_args.extend([
+                    f"-c:a:{i}", "eac3",
+                    f"-b:a:{i}", bitrate,
+                ])
+                logger.info(
+                    f"Stream {i}: {codec} {channels}ch -> eac3 @ {bitrate}"
+                )
+                encoded_count += 1
+            else:
+                per_stream_codec_args.extend([f"-c:a:{i}", "copy"])
+                logger.info(
+                    f"Stream {i}: {codec or 'unknown'} {channels}ch -> copy"
+                )
+                copied_count += 1
+
+        logger.info(
+            f"Audio plan: {encoded_count} stream(s) to EAC3, "
+            f"{copied_count} stream(s) copied"
+        )
 
         command = [
             "ffmpeg", "-i", input_file, "-hide_banner",
@@ -102,8 +129,8 @@ class AudioProcessor:
             "-max_muxing_queue_size", str(config.ffmpeg.max_muxing_queue_size),
             "-bufsize", config.ffmpeg.bufsize,
             "-strict", config.ffmpeg.strict_mode,
-            "-map", "0", "-c:v", "copy", "-c:a", "eac3", "-c:s", "copy",
-            *per_stream_bitrate_args,
+            "-map", "0", "-c:v", "copy", "-c:s", "copy",
+            *per_stream_codec_args,
             "-dialnorm", str(config.ffmpeg.dialnorm),
             "-mixing_level", str(config.ffmpeg.mixing_level),
             temp_file, "-y"
