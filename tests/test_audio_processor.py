@@ -37,3 +37,19 @@ def test_bitrate_for_channels_respects_env(monkeypatch):
     monkeypatch.setattr(config_module.config.ffmpeg, "bitrate_surround", "1024k")
     ap = AudioProcessor()
     assert ap._bitrate_for_channels(6) == "1024k"
+
+
+@pytest.mark.parametrize("existing,channels,expected", [
+    ("Français (DTS-HD MA 6.1)", 7, "Français (EAC3 6.1)"),
+    ("Anglais (TRUEHD 7.1)", 8, "Anglais (EAC3 7.1)"),
+    ("English [TrueHD 5.1]", 6, "English [EAC3 5.1]"),
+    ("VF DTS 5.1", 6, "VF EAC3 5.1"),
+    ("DTS-HD MA", 6, "EAC3"),
+    ("", 8, "EAC3 7.1"),
+    ("", 6, "EAC3 5.1"),
+    ("", 2, "EAC3 Stereo"),
+    ("Director Commentary", 2, "Director Commentary [EAC3]"),
+])
+def test_rewrite_title(existing, channels, expected):
+    ap = AudioProcessor()
+    assert ap._rewrite_title(existing, channels) == expected

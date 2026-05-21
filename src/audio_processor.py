@@ -1,10 +1,18 @@
 import json
 import logging
 import os
+import re
 import subprocess
 import time
 from pathlib import Path
 from typing import List, Dict, Any
+
+# Matches DTS / DTS-HD MA / DTS-HD HRA / TrueHD variants inside a track title
+_OLD_CODEC_RE = re.compile(
+    r"(?i)\b(true\s*hd|dts[\s\-]?hd(?:[\s\-]?(?:ma|hra))?|dts)\b"
+)
+
+_LAYOUT_NAMES = {1: "Mono", 2: "Stereo", 6: "5.1", 7: "6.1", 8: "7.1"}
 
 from .config import config
 from .exceptions import ConversionError, ConversionTimeoutError, DiskSpaceError
@@ -73,6 +81,15 @@ class AudioProcessor:
             logger.error(f"Error checking disk space for {file_path}: {e}")
             return False
 
+    def _rewrite_title(self, existing_title: str, channels: int) -> str:
+        """Build a new track title reflecting that the codec is now EAC3."""
+        layout = _LAYOUT_NAMES.get(channels, f"{channels}ch")
+        if existing_title and _OLD_CODEC_RE.search(existing_title):
+            return _OLD_CODEC_RE.sub("EAC3", existing_title)
+        if existing_title:
+            return f"{existing_title} [EAC3]"
+        return f"EAC3 {layout}"
+
     def _bitrate_for_channels(self, channels: int) -> str:
         """Pick the EAC3 bitrate based on the source channel count."""
         if channels <= 2:
@@ -100,12 +117,16 @@ class AudioProcessor:
             channels = int(stream.get("channels", 2) or 2)
             if codec in ("dts", "truehd"):
                 bitrate = self._bitrate_for_channels(channels)
+                existing_title = (stream.get("tags") or {}).get("title", "")
+                new_title = self._rewrite_title(existing_title, channels)
                 per_stream_codec_args.extend([
                     f"-c:a:{i}", "eac3",
                     f"-b:a:{i}", bitrate,
+                    f"-metadata:s:a:{i}", f"title={new_title}",
                 ])
                 logger.info(
-                    f"Stream {i}: {codec} {channels}ch -> eac3 @ {bitrate}"
+                    f"Stream {i}: {codec} {channels}ch -> eac3 @ {bitrate} "
+                    f"(title: '{existing_title}' -> '{new_title}')"
                 )
                 encoded_count += 1
             else:
