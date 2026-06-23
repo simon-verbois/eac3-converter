@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here. Format loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow [SemVer](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- Replaced dynamic EAC3 bitrate scaling with fixed Plex-safe audio profiles: mono 128k, stereo 192k, and 5.1 640k.
+- 7.1/8ch DTS/TrueHD sources now fall back to EAC3 5.1 at 640k by default, with titles reflecting the actual output layout.
+- `FFMPEG_KBPS_PER_CHANNEL` is deprecated and no longer affects audio bitrate selection.
+
 ## [v2.2.0] — 2026-05-20
 
 ### Added

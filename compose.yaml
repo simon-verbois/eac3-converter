@@ -25,9 +25,9 @@ services:
       RUN_IMMEDIATELY: "false"
 
       # --- FFmpeg: audio quality -----------------------------------------
-      # Output bitrate per stream = channels * FFMPEG_KBPS_PER_CHANNEL,
-      # capped at the source bitrate for lossy sources, clamped to
-      # ffmpeg's [32, 6144] kbps range.
+      # Audio output uses fixed Plex-safe profiles in code:
+      # mono 128k, stereo 192k, 5.1 640k. 7.1/8ch sources fallback to 5.1 640k.
+      # Deprecated: parsed for backwards compatibility only; no longer affects bitrate.
       FFMPEG_KBPS_PER_CHANNEL: "256"
       FFMPEG_DIALNORM: "-27"
       FFMPEG_MIXING_LEVEL: "80"

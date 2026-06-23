@@ -14,6 +14,7 @@ Automatically converts DTS and TrueHD audio tracks to EAC3 format in MKV files. 
 
 - **Auto-detection** of DTS/TrueHD tracks in MKV files
 - **Standalone audio support** (opt-in) for loose `.dts`/`.thd` files alongside videos (e.g. external tracks loaded by Jellyfin)
+- **Plex-safe fixed EAC3 profiles** instead of per-channel bitrate scaling
 - **High-performance** ffmpeg conversion with threading
 - **SQLite cache** to avoid re-processing files (atomic, fast, queryable)
 - **Scheduled processing** or on-demand execution
@@ -33,7 +34,7 @@ All settings are configured via environment variables. See [compose.yaml](compos
 | `DEBUG_MODE` | `false` | Verbose logging |
 | `START_TIME` | `04:00` | Daily processing time (HH:MM) |
 | `RUN_IMMEDIATELY` | `false` | Process once on startup and exit |
-| `FFMPEG_KBPS_PER_CHANNEL` | `256` | Target EAC3 bitrate per audio channel. Total bitrate = channels × this. Capped at source bitrate for lossy sources (DTS core, DTS-HD HRA). |
+| `FFMPEG_KBPS_PER_CHANNEL` | `256` | Deprecated; parsed for backward compatibility only. EAC3 output now uses fixed Plex-safe profiles and this value does not affect bitrate. |
 | `FFMPEG_DIALNORM` | `-27` | Dialog normalization level (-31..-1) |
 | `FFMPEG_MIXING_LEVEL` | `80` | Mixing level metadata (informational) |
 | `FFMPEG_TIMEOUT_SECONDS` | `3600` | Max conversion time per file |
@@ -50,6 +51,8 @@ All settings are configured via environment variables. See [compose.yaml](compos
 | `STANDALONE_AUDIO_KEEP_ORIGINAL` | `false` | Keep the original audio file alongside the converted `.ec3` instead of deleting it |
 | `STANDALONE_AUDIO_OUTPUT_EXTENSION` | `ec3` | Output file extension for converted standalone audio |
 
+Audio conversion uses fixed Plex-safe output profiles: mono `128k`, stereo `192k`, and 5.1 `640k`. DTS/TrueHD sources with 7.1/8 channels are downmixed to EAC3 5.1 at `640k` by default to avoid oversized EAC3 streams and compatibility issues.
+
 ### Standalone audio files
 
 By default the converter only touches `.mkv` files. If you have **loose audio files** sitting next to your movies (the way Jellyfin auto-loads external tracks — e.g. `Movie.mkv` + `Movie.dts`), set `PROCESS_STANDALONE_AUDIO=true` and they'll be converted to EAC3 in a second pass.
@@ -60,7 +63,7 @@ How it works:
 - Each file is probed with `ffprobe` first — already-EAC3/AC3 files and unsupported codecs are skipped (and remembered in the cache so they're not re-probed daily).
 - DTS / TrueHD files are converted to a sibling `<name>.ec3` (Jellyfin recognises this extension as an external track).
 - The original file is **deleted** after a successful conversion. Set `STANDALONE_AUDIO_KEEP_ORIGINAL=true` to keep both side by side.
-- Channel-aware bitrate (`FFMPEG_BITRATE_STEREO` / `_SURROUND` / `_SURROUND_PLUS`), `FFMPEG_DIALNORM` and `FFMPEG_MIXING_LEVEL` apply the same way as for in-MKV tracks.
+- Fixed Plex-safe audio profiles, `FFMPEG_DIALNORM` and `FFMPEG_MIXING_LEVEL` apply the same way as for in-MKV tracks.
 
 ### Start
 

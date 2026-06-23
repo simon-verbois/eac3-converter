@@ -20,10 +20,9 @@ data:
   RUN_IMMEDIATELY: "false"
 
   # --- FFmpeg: audio quality ----------------------------------------------
-  # Target EAC3 bitrate per channel (kbps). Output bitrate per stream =
-  # channels * this. Capped at source bitrate for lossy sources (DTS core,
-  # DTS-HD HRA). Clamped to ffmpeg's [32, 6144] kbps range.
-  # 256 -> 512k stereo / 1536k 5.1 / 2048k 7.1
+  # Audio output uses fixed Plex-safe profiles in code:
+  # mono 128k, stereo 192k, 5.1 640k. 7.1/8ch sources fallback to 5.1 640k.
+  # Deprecated: parsed for backwards compatibility only; no longer affects bitrate.
   FFMPEG_KBPS_PER_CHANNEL: "256"
   # Dialog normalization level (-31..-1, broadcast standard = -27).
   FFMPEG_DIALNORM: "-27"

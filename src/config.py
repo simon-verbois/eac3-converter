@@ -60,6 +60,8 @@ class StandaloneAudioConfig:
 
 @dataclass
 class FFMpegConfig:
+    # Deprecated: parsed for backward compatibility only. Audio bitrate is
+    # resolved from fixed profiles in audio_processor.py.
     kbps_per_channel: int = 256
     dialnorm: int = -27
     mixing_level: int = 80

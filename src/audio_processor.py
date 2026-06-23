@@ -1,23 +1,54 @@
 import json
 import logging
 import os
-import re
 import subprocess
 import time
-from pathlib import Path
 from typing import List, Dict, Any
-
-# Matches DTS / DTS-HD MA / DTS-HD HRA / TrueHD variants inside a track title
-_OLD_CODEC_RE = re.compile(
-    r"(?i)\b(true\s*hd|dts[\s\-]?hd(?:[\s\-]?(?:ma|hra))?|dts)\b"
-)
-
-_LAYOUT_NAMES = {1: "Mono", 2: "Stereo", 6: "5.1", 7: "6.1", 8: "7.1"}
 
 from .config import config
 from .exceptions import ConversionError, ConversionTimeoutError, DiskSpaceError
 
 logger = logging.getLogger("eac3_converter")
+
+AUDIO_PROFILES = {
+    "eac3": {
+        1: {"bitrate": "128k", "channels": 1, "title": "EAC3 Mono"},
+        2: {"bitrate": "192k", "channels": 2, "title": "EAC3 Stereo"},
+        6: {"bitrate": "640k", "channels": 6, "title": "EAC3 5.1"},
+        8: {"bitrate": "768k", "channels": 8, "title": "EAC3 7.1"},
+    },
+    "ac3": {
+        1: {"bitrate": "128k", "channels": 1, "title": "AC3 Mono"},
+        2: {"bitrate": "192k", "channels": 2, "title": "AC3 Stereo"},
+        6: {"bitrate": "640k", "channels": 6, "title": "AC3 5.1"},
+    },
+}
+
+
+def resolve_audio_profile(target_codec: str, source_channels: int) -> Dict[str, Any]:
+    """Resolve a fixed Plex-safe audio output profile.
+
+    EAC3 7.1 support varies across ffmpeg/Plex environments, so 7.1/8ch
+    sources intentionally fall back to EAC3 5.1 by default.
+    """
+    codec = (target_codec or "").lower()
+    if codec not in AUDIO_PROFILES:
+        raise ValueError(f"Unsupported target audio codec: {target_codec}")
+
+    try:
+        channels = int(source_channels or 2)
+    except (TypeError, ValueError):
+        channels = 2
+
+    if channels <= 1:
+        profile_channels = 1
+    elif channels == 2:
+        profile_channels = 2
+    else:
+        profile_channels = 6
+
+    profile = AUDIO_PROFILES[codec][profile_channels]
+    return dict(profile)
 
 
 class AudioProcessor:
@@ -81,66 +112,12 @@ class AudioProcessor:
             logger.error(f"Error checking disk space for {file_path}: {e}")
             return False
 
-    def _rewrite_title(self, existing_title: str, channels: int) -> str:
-        """Build a new track title reflecting that the codec is now EAC3."""
-        layout = _LAYOUT_NAMES.get(channels, f"{channels}ch")
-        if existing_title and _OLD_CODEC_RE.search(existing_title):
-            return _OLD_CODEC_RE.sub("EAC3", existing_title)
-        if existing_title:
-            return f"{existing_title} [EAC3]"
-        return f"EAC3 {layout}"
-
-    @staticmethod
-    def _is_lossless(codec: str, profile: str) -> bool:
-        """Return True for codecs whose source bitrate is not a quality cap.
-
-        TrueHD is always lossless. DTS variants are lossless only when the
-        profile says 'MA' (DTS-HD Master Audio). DTS, DTS-HD HRA, DTS-ES are
-        lossy and their bit_rate is a meaningful quality ceiling.
-        """
-        codec = (codec or "").lower()
-        profile = (profile or "").lower()
-        if codec == "truehd":
-            return True
-        if codec == "dts" and "ma" in profile:
-            return True
-        return False
-
-    def _target_bitrate(self, stream: Dict[str, Any]) -> str:
-        """Compute the EAC3 output bitrate for a single audio stream.
-
-        target = channels * FFMPEG_KBPS_PER_CHANNEL, then capped at the
-        source bitrate if the source is lossy (no point encoding higher
-        than an already-compressed source). Clamped to ffmpeg's EAC3
-        accepted range [32, 6144] kbps.
-        """
-        channels = int(stream.get("channels", 2) or 2)
-        target_kbps = channels * config.ffmpeg.kbps_per_channel
-
-        try:
-            source_kbps = int(stream.get("bit_rate") or 0) // 1000
-        except (TypeError, ValueError):
-            source_kbps = 0
-
-        codec = stream.get("codec_name", "")
-        profile = stream.get("profile", "")
-        if not self._is_lossless(codec, profile) and 0 < source_kbps < target_kbps:
-            logger.debug(
-                f"Capping target {target_kbps}k -> source {source_kbps}k "
-                f"(lossy {codec}/{profile})"
-            )
-            target_kbps = source_kbps
-
-        target_kbps = max(32, min(6144, target_kbps))
-        return f"{target_kbps}k"
-
     def convert_audio_tracks(self, input_file: str, temp_file: str) -> Dict[str, Any]:
         """Re-encode DTS/TrueHD audio streams to EAC3; copy other streams as-is.
 
-        Bitrate is chosen per stream from the source channel count. Streams
-        that are neither DTS nor TrueHD are passed through with -c:a:N copy
-        so the file does not grow from re-encoding low-bitrate dubs or
-        commentary tracks.
+        Output bitrate, channels and title are chosen from fixed profiles.
+        Streams that are neither DTS nor TrueHD are passed through with
+        -c:a:N copy.
         """
         start_time = time.time()
 
@@ -152,17 +129,18 @@ class AudioProcessor:
             codec = (stream.get("codec_name") or "").lower()
             channels = int(stream.get("channels", 2) or 2)
             if codec in ("dts", "truehd"):
-                bitrate = self._target_bitrate(stream)
+                profile = resolve_audio_profile("eac3", channels)
                 existing_title = (stream.get("tags") or {}).get("title", "")
-                new_title = self._rewrite_title(existing_title, channels)
                 per_stream_codec_args.extend([
                     f"-c:a:{i}", "eac3",
-                    f"-b:a:{i}", bitrate,
-                    f"-metadata:s:a:{i}", f"title={new_title}",
+                    f"-b:a:{i}", profile["bitrate"],
+                    f"-ac:a:{i}", str(profile["channels"]),
+                    f"-metadata:s:a:{i}", f"title={profile['title']}",
                 ])
                 logger.info(
-                    f"Stream {i}: {codec} {channels}ch -> eac3 @ {bitrate} "
-                    f"(title: '{existing_title}' -> '{new_title}')"
+                    f"Stream {i}: {codec} {channels}ch -> eac3 "
+                    f"{profile['channels']}ch @ {profile['bitrate']} "
+                    f"(title: '{existing_title}' -> '{profile['title']}')"
                 )
                 encoded_count += 1
             else:
@@ -223,8 +201,11 @@ class AudioProcessor:
 
         streams = self.get_audio_streams_info(input_file)
         channels = int(streams[0].get("channels", 2) or 2) if streams else 2
-        bitrate = self._bitrate_for_channels(channels)
-        logger.debug(f"Standalone audio: channels={channels} -> bitrate={bitrate}")
+        profile = resolve_audio_profile("eac3", channels)
+        logger.debug(
+            f"Standalone audio: channels={channels} -> eac3 "
+            f"{profile['channels']}ch @ {profile['bitrate']}"
+        )
 
         command = [
             "ffmpeg", "-i", input_file, "-hide_banner",
@@ -232,7 +213,8 @@ class AudioProcessor:
             "-threads", str(config.ffmpeg.threads),
             "-strict", config.ffmpeg.strict_mode,
             "-vn", "-map", "0:a", "-c:a", "eac3",
-            "-b:a", bitrate,
+            "-b:a", profile["bitrate"],
+            "-ac:a", str(profile["channels"]),
             "-dialnorm", str(config.ffmpeg.dialnorm),
             "-mixing_level", str(config.ffmpeg.mixing_level),
             "-f", "eac3",

@@ -124,12 +124,12 @@ def test_standalone_audio_output_extension_strips_dot(monkeypatch):
     assert load_config().standalone_audio.output_extension == "eac3"
 
 
-def test_kbps_per_channel_override(monkeypatch):
+def test_deprecated_kbps_per_channel_still_parsed(monkeypatch):
     monkeypatch.setenv("FFMPEG_KBPS_PER_CHANNEL", "192")
     assert load_config().ffmpeg.kbps_per_channel == 192
 
 
-def test_kbps_per_channel_invalid(monkeypatch):
+def test_deprecated_kbps_per_channel_invalid(monkeypatch):
     monkeypatch.setenv("FFMPEG_KBPS_PER_CHANNEL", "high")
     with pytest.raises(ConfigError):
         load_config()
