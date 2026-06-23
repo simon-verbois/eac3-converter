@@ -82,6 +82,7 @@ class Config:
     schedule: ScheduleConfig = field(default_factory=ScheduleConfig)
     ffmpeg: FFMpegConfig = field(default_factory=FFMpegConfig)
     standalone_audio: StandaloneAudioConfig = field(default_factory=StandaloneAudioConfig)
+    excluded_dirs: tuple[str, ...] = ("download",)
     tz: str = "Europe/Paris"
 
     def get_parsed_start_time(self) -> tuple[int, int]:
@@ -127,6 +128,11 @@ def load_config() -> Config:
             ),
             keep_original=_env_bool("STANDALONE_AUDIO_KEEP_ORIGINAL", False),
             output_extension=_env_str("STANDALONE_AUDIO_OUTPUT_EXTENSION", "ec3").strip().lstrip("."),
+        ),
+        excluded_dirs=tuple(
+            name.strip().lower()
+            for name in _env_str("EXCLUDED_DIRS", "download").split(",")
+            if name.strip()
         ),
         tz=_env_str("TZ", "Europe/Paris"),
     )

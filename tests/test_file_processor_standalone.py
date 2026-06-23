@@ -14,6 +14,7 @@ def standalone_defaults(monkeypatch):
     monkeypatch.setattr(sa, "extensions", ("dts", "thd", "truehd", "dtshd"))
     monkeypatch.setattr(sa, "keep_original", False)
     monkeypatch.setattr(sa, "output_extension", "ec3")
+    monkeypatch.setattr(config_module.config, "excluded_dirs", ("download",))
 
 
 def make_processor(tmp_path):
@@ -40,6 +41,75 @@ def test_find_standalone_audio_files_matches_configured_extensions(tmp_path, mon
         str(tmp_path / "track.dts"),
         str(tmp_path / "other.thd"),
         str(sub / "nested.truehd"),
+    ])
+
+
+def test_find_mkv_files_ignores_excluded_dirs(tmp_path):
+    (tmp_path / "movie.mkv").write_bytes(b"x")
+    (tmp_path / ".temp_movie.mkv").write_bytes(b"x")
+
+    download = tmp_path / "download"
+    download.mkdir()
+    (download / "ignored.mkv").write_bytes(b"x")
+
+    uppercase = tmp_path / "DOWNLOAD"
+    uppercase.mkdir()
+    (uppercase / "ignored-too.mkv").write_bytes(b"x")
+
+    nested_download = tmp_path / "library" / "download"
+    nested_download.mkdir(parents=True)
+    (nested_download / "nested-ignored.mkv").write_bytes(b"x")
+
+    downloads = tmp_path / "downloads"
+    downloads.mkdir()
+    (downloads / "kept.mkv").write_bytes(b"x")
+
+    my_download = tmp_path / "my-download"
+    my_download.mkdir()
+    (my_download / "also-kept.mkv").write_bytes(b"x")
+
+    fp, cache, _ = make_processor(tmp_path)
+    found = sorted(fp.find_mkv_files(str(tmp_path)))
+    cache.close()
+
+    assert found == sorted([
+        str(tmp_path / "movie.mkv"),
+        str(downloads / "kept.mkv"),
+        str(my_download / "also-kept.mkv"),
+    ])
+
+
+def test_find_standalone_audio_files_ignores_excluded_dirs(tmp_path):
+    (tmp_path / "track.dts").write_bytes(b"x")
+
+    download = tmp_path / "download"
+    download.mkdir()
+    (download / "ignored.dts").write_bytes(b"x")
+
+    uppercase = tmp_path / "DOWNLOAD"
+    uppercase.mkdir()
+    (uppercase / "ignored-too.thd").write_bytes(b"x")
+
+    nested_download = tmp_path / "library" / "download"
+    nested_download.mkdir(parents=True)
+    (nested_download / "nested-ignored.truehd").write_bytes(b"x")
+
+    downloads = tmp_path / "downloads"
+    downloads.mkdir()
+    (downloads / "kept.dts").write_bytes(b"x")
+
+    my_download = tmp_path / "my-download"
+    my_download.mkdir()
+    (my_download / "also-kept.thd").write_bytes(b"x")
+
+    fp, cache, _ = make_processor(tmp_path)
+    found = sorted(fp.find_standalone_audio_files(str(tmp_path)))
+    cache.close()
+
+    assert found == sorted([
+        str(tmp_path / "track.dts"),
+        str(downloads / "kept.dts"),
+        str(my_download / "also-kept.thd"),
     ])
 
 

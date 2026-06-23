@@ -24,6 +24,10 @@ services:
       START_TIME: "04:00"
       RUN_IMMEDIATELY: "false"
 
+      # --- Scan filters ---------------------------------------------------
+      # Comma-separated directory names to skip, exact match and case-insensitive.
+      EXCLUDED_DIRS: "download"
+
       # --- FFmpeg: audio quality -----------------------------------------
       # Audio output uses fixed Plex-safe profiles in code:
       # mono 128k, stereo 192k, 5.1 640k. 7.1/8ch sources fallback to 5.1 640k.

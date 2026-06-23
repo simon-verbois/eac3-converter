@@ -4,6 +4,9 @@ All notable changes to this project are documented here. Format loosely based on
 
 ## [Unreleased]
 
+### Added
+- Configurable scan directory excludes via `EXCLUDED_DIRS`, defaulting to `download`.
+
 ### Fixed
 - Replaced dynamic EAC3 bitrate scaling with fixed Plex-safe audio profiles: mono 128k, stereo 192k, and 5.1 640k.
 - 7.1/8ch DTS/TrueHD sources now fall back to EAC3 5.1 at 640k by default, with titles reflecting the actual output layout.

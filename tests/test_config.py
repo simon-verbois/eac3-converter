@@ -4,7 +4,7 @@ from src.config import load_config
 from src.exceptions import ConfigError
 
 ENV_VARS = [
-    "DEBUG_MODE", "START_TIME", "RUN_IMMEDIATELY", "TZ",
+    "DEBUG_MODE", "START_TIME", "RUN_IMMEDIATELY", "EXCLUDED_DIRS", "TZ",
     "FFMPEG_KBPS_PER_CHANNEL", "FFMPEG_DIALNORM", "FFMPEG_MIXING_LEVEL",
     "FFMPEG_STRICT_MODE", "FFMPEG_FLAGS",
     "FFMPEG_TIMEOUT_SECONDS", "FFMPEG_MIN_DISK_SPACE_RATIO", "FFMPEG_THREADS",
@@ -27,6 +27,7 @@ def test_defaults_apply_when_no_env_set():
     assert cfg.schedule.start_time == "04:00"
     assert cfg.schedule.run_immediately is False
     assert cfg.tz == "Europe/Paris"
+    assert cfg.excluded_dirs == ("download",)
     assert cfg.ffmpeg.kbps_per_channel == 256
     assert cfg.ffmpeg.dialnorm == -27
     assert cfg.ffmpeg.mixing_level == 80
@@ -82,6 +83,16 @@ def test_get_parsed_start_time(monkeypatch):
     monkeypatch.setenv("START_TIME", "21:30")
     cfg = load_config()
     assert cfg.get_parsed_start_time() == (21, 30)
+
+
+def test_excluded_dirs_parsed(monkeypatch):
+    monkeypatch.setenv("EXCLUDED_DIRS", " Download, temp , MY-DIR ")
+    assert load_config().excluded_dirs == ("download", "temp", "my-dir")
+
+
+def test_excluded_dirs_empty_uses_default(monkeypatch):
+    monkeypatch.setenv("EXCLUDED_DIRS", "")
+    assert load_config().excluded_dirs == ("download",)
 
 
 def test_dialnorm_override(monkeypatch):

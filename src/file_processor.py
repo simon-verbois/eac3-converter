@@ -133,10 +133,18 @@ class FileProcessor:
             self.cache_manager.mark_processed(file_key, metadata)
             logger.debug(f"No DTS or TrueHD tracks found in {filename}, skipping.")
 
+    @staticmethod
+    def _prune_excluded_dirs(dirs: list[str]) -> None:
+        excluded_dirs = set(config.excluded_dirs)
+        if not excluded_dirs:
+            return
+        dirs[:] = [directory for directory in dirs if directory.lower() not in excluded_dirs]
+
     def find_mkv_files(self, input_dir: str) -> list[str]:
-        """Find all MKV files in the input directory recursively, excluding temporary files."""
+        """Find all MKV files recursively, excluding configured dirs and temporary files."""
         mkv_files = []
-        for root, _, files in os.walk(input_dir):
+        for root, dirs, files in os.walk(input_dir):
+            self._prune_excluded_dirs(dirs)
             for file in files:
                 if file.endswith(".mkv") and not file.startswith(".temp_"):
                     mkv_files.append(os.path.join(root, file))
@@ -144,12 +152,13 @@ class FileProcessor:
         return mkv_files
 
     def find_standalone_audio_files(self, input_dir: str) -> list[str]:
-        """Find standalone audio files (e.g. .dts) in the input directory recursively."""
+        """Find standalone audio files recursively, excluding configured dirs."""
         extensions = tuple(f".{ext.lower()}" for ext in config.standalone_audio.extensions)
         if not extensions:
             return []
         audio_files = []
-        for root, _, files in os.walk(input_dir):
+        for root, dirs, files in os.walk(input_dir):
+            self._prune_excluded_dirs(dirs)
             for file in files:
                 if file.startswith(".temp_"):
                     continue

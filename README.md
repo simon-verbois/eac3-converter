@@ -34,6 +34,7 @@ All settings are configured via environment variables. See [compose.yaml](compos
 | `DEBUG_MODE` | `false` | Verbose logging |
 | `START_TIME` | `04:00` | Daily processing time (HH:MM) |
 | `RUN_IMMEDIATELY` | `false` | Process once on startup and exit |
+| `EXCLUDED_DIRS` | `download` | Comma-separated directory names to skip during scans. Matches exact directory names, case-insensitive, at any depth. |
 | `FFMPEG_KBPS_PER_CHANNEL` | `256` | Deprecated; parsed for backward compatibility only. EAC3 output now uses fixed Plex-safe profiles and this value does not affect bitrate. |
 | `FFMPEG_DIALNORM` | `-27` | Dialog normalization level (-31..-1) |
 | `FFMPEG_MIXING_LEVEL` | `80` | Mixing level metadata (informational) |
@@ -52,6 +53,8 @@ All settings are configured via environment variables. See [compose.yaml](compos
 | `STANDALONE_AUDIO_OUTPUT_EXTENSION` | `ec3` | Output file extension for converted standalone audio |
 
 Audio conversion uses fixed Plex-safe output profiles: mono `128k`, stereo `192k`, and 5.1 `640k`. DTS/TrueHD sources with 7.1/8 channels are downmixed to EAC3 5.1 at `640k` by default to avoid oversized EAC3 streams and compatibility issues.
+
+Directories listed in `EXCLUDED_DIRS` are pruned before scanning. With the default `download`, any folder named exactly `download` is ignored recursively, while folders such as `downloads` or `my-download` are still scanned.
 
 ### Standalone audio files
 
